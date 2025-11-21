@@ -1,4 +1,3 @@
-// app/search.tsx
 import React, { useMemo, useState } from 'react';
 import { View, Text, TouchableOpacity, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -20,9 +19,21 @@ type DistanceFilter = 'all' | 'near' | 'far';
 type AvailabilityFilter = 'all' | 'in_stock' | 'out_of_stock';
 
 export default function SearchScreen() {
-  const { theme } = useTheme();
+  const themeContext = useTheme();
+  const appContext = useApp();
+
+  // 🚨 Safe fallback in case context is null
+  const theme = themeContext?.theme ?? {
+    text: '#000',
+    textSecondary: '#555',
+    background: '#fff',
+    primary: '#007bff',
+    border: '#ccc',
+    surface: '#f9f9f9',
+  };
+  const addToPrebill = appContext?.addToPrebill ?? (() => {});
+
   const router = useRouter();
-  const { addToPrebill } = useApp();
 
   // UI state
   const [query, setQuery] = useState('');
@@ -31,38 +42,38 @@ export default function SearchScreen() {
   const [distance, setDistance] = useState<DistanceFilter>('all');
   const [availability, setAvailability] = useState<AvailabilityFilter>('all');
 
-  // Build shop distance map so we can filter products by their shop
+  // ✅ Validate mock data fallback
+  const validShops = Array.isArray(mockShops) ? mockShops : [];
+  const validProducts = Array.isArray(mockProducts) ? mockProducts : [];
+
+  // Shop distance map
   const shopDistance = useMemo(() => {
     const map = new Map<string, number>();
-    for (const s of mockShops) {
+    for (const s of validShops) {
       const d = (s as any).distance ?? (s as any).distanceKm;
       if (typeof d === 'number') map.set(s.id, d);
     }
     return map;
-  }, []);
+  }, [validShops]);
 
-  // Filtering
   const products = useMemo(() => {
-    let list = mockProducts.slice();
+    let list = validProducts.slice();
 
-    // search query
     const q = query.trim().toLowerCase();
     if (q) {
       list = list.filter(
         (p) =>
-          p.name.toLowerCase().includes(q) ||
-          (p.category || '').toLowerCase().includes(q)
+          p.name?.toLowerCase().includes(q) ||
+          p.category?.toLowerCase().includes(q)
       );
     }
 
-    // price
     if (price === 'low') {
       list = list.filter((p) => (p.price || 0) <= 200);
     } else if (price === 'high') {
       list = list.filter((p) => (p.price || 0) > 200);
     }
 
-    // distance (based on product.shopId)
     if (distance !== 'all') {
       list = list.filter((p) => {
         const d = shopDistance.get(p.shopId) ?? Infinity;
@@ -70,7 +81,6 @@ export default function SearchScreen() {
       });
     }
 
-    // availability
     if (availability !== 'all') {
       if (availability === 'in_stock') {
         list = list.filter((p) => p.availability !== 'out_of_stock');
@@ -88,24 +98,19 @@ export default function SearchScreen() {
     setAvailability('all');
   };
 
-  // Add to pre-bill + toast
+  // 👉 Safe toast + addToPrebill
   const handleAdd = (p: Product) => {
     addToPrebill(p, 1);
+
     Toast.show({
-      type: 'message',
-      props: {
-        iconOnly: true,
-        color: theme.primary,
-        icon: <ShoppingCart size={20} color={theme.primary} />,
-        onPress: () => router.push('/prebill'),
-      },
-      visibilityTime: 900,
+      type: 'success',
+      text1: 'Added to cart!',
+      visibilityTime: 1000,
+      autoHide: true,
       position: 'bottom',
-      bottomOffset: 72,
     });
   };
 
-  // Small UI helpers
   const SectionLabel = ({ children }: { children: React.ReactNode }) => (
     <Text
       style={{
@@ -140,8 +145,6 @@ export default function SearchScreen() {
         marginRight: 8,
         marginBottom: 8,
       }}
-      accessibilityRole="button"
-      accessibilityLabel={label}
     >
       <Text
         style={{
@@ -157,7 +160,6 @@ export default function SearchScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      {/* Search bar */}
       <SearchBar
         value={query}
         onChangeText={setQuery}
@@ -167,14 +169,12 @@ export default function SearchScreen() {
         rightAccessory={
           <TouchableOpacity
             onPress={() => setShowFilters((v) => !v)}
-            accessibilityRole="button"
-            accessibilityLabel="Toggle filters"
             style={{
               width: 36,
               height: 36,
               borderRadius: 8,
-              alignItems: 'center',
               justifyContent: 'center',
+              alignItems: 'center',
               backgroundColor: theme.surface,
               borderWidth: 1,
               borderColor: theme.border,
@@ -185,7 +185,7 @@ export default function SearchScreen() {
         }
       />
 
-      {/* Filters panel */}
+      {/* Filters */}
       {showFilters && (
         <View
           style={{
@@ -195,12 +195,10 @@ export default function SearchScreen() {
             borderBottomColor: theme.border,
           }}
         >
-          {/* Header row */}
           <View
             style={{
               flexDirection: 'row',
               justifyContent: 'space-between',
-              alignItems: 'center',
               marginBottom: 12,
             }}
           >
@@ -217,8 +215,6 @@ export default function SearchScreen() {
                 backgroundColor: theme.primary,
                 borderRadius: 8,
               }}
-              accessibilityRole="button"
-              accessibilityLabel="Clear all filters"
             >
               <Text style={{ color: '#fff', fontWeight: '700' }}>
                 Clear all
@@ -226,7 +222,7 @@ export default function SearchScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Price */}
+          {/* Price Filter */}
           <View style={{ marginBottom: 12 }}>
             <SectionLabel>Price</SectionLabel>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
@@ -248,7 +244,7 @@ export default function SearchScreen() {
             </View>
           </View>
 
-          {/* Distance */}
+          {/* Distance Filter */}
           <View style={{ marginBottom: 12 }}>
             <SectionLabel>Distance</SectionLabel>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
@@ -270,7 +266,7 @@ export default function SearchScreen() {
             </View>
           </View>
 
-          {/* Availability */}
+          {/* Availability Filter */}
           <View>
             <SectionLabel>Availability</SectionLabel>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
@@ -294,14 +290,14 @@ export default function SearchScreen() {
         </View>
       )}
 
-      {/* Results header */}
+      {/* Results */}
       <View
         style={{
           paddingHorizontal: 16,
           paddingVertical: 12,
           backgroundColor: theme.surface,
-          borderBottomColor: theme.border,
           borderBottomWidth: 1,
+          borderBottomColor: theme.border,
         }}
       >
         <Text style={{ fontSize: 16, color: theme.textSecondary }}>
@@ -309,14 +305,14 @@ export default function SearchScreen() {
         </Text>
       </View>
 
-      {/* Grid */}
+      {/* Product Grid */}
       {products.length === 0 ? (
         <View
           style={{
             flex: 1,
             alignItems: 'center',
             justifyContent: 'center',
-            padding: 32,
+            padding: 40,
           }}
         >
           <SearchIcon size={64} color={theme.textSecondary} />
@@ -337,11 +333,7 @@ export default function SearchScreen() {
           keyExtractor={(item) => item.id}
           numColumns={2}
           columnWrapperStyle={{ justifyContent: 'space-between' }}
-          contentContainerStyle={{
-            paddingHorizontal: 4,
-            paddingBottom: 16,
-            paddingTop: 8,
-          }}
+          contentContainerStyle={{ paddingHorizontal: 8, paddingBottom: 16 }}
           renderItem={({ item }) => (
             <ProductCard
               product={item}

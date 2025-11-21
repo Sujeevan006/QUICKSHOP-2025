@@ -1,6 +1,6 @@
 // app/_layout.tsx
-import React, { useEffect, useContext, useState } from 'react';
-import { View, TouchableOpacity, Text } from 'react-native';
+import React, { useContext } from 'react';
+import { View, TouchableOpacity, Text, Platform } from 'react-native';
 import { Slot, usePathname, useRouter } from 'expo-router';
 import {
   SafeAreaView,
@@ -14,21 +14,24 @@ import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { AppProvider } from '@/contexts/AppContext';
 import { ThemedToast } from '@/components/common/ThemedToast';
 import { AppHeader } from '@/components/common/AppHeader';
-import { AuthContext } from '@/contexts/AuthContext'; // 👈 ADDED: AuthContext to get role
+import { AuthContext } from '@/contexts/AuthContext'; // ✅ used correctly
 
 import { Home, Store, MapPin, ShoppingCart } from 'lucide-react-native';
 
+// ----------------------
+// ⏬ Bottom Navigation for Customers
+// ----------------------
 function GlobalBottomNav() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const pathname = usePathname() || '/';
   const { theme, mode } = useTheme();
+  const isDark = mode === 'dark';
 
-  const brand = mode === 'dark' ? '#131313ff' : theme.surface;
-  const iconColor = mode === 'dark' ? '#fff' : '#111827';
-  const activeBg =
-    mode === 'dark' ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.06)';
-  const labelColor = iconColor;
+  const brand = isDark ? '#131313' : theme.surface;
+  const iconColor = isDark ? '#9ca3af' : '#6b7280'; // gray-400 / gray-500
+  const activeIconColor = theme.primary;
+  const activeBg = isDark ? 'rgba(255,255,255,0.05)' : `${theme.primary}10`; // Very subtle
 
   const go = (href: string) => {
     if (pathname !== href) router.replace(href);
@@ -51,33 +54,36 @@ function GlobalBottomNav() {
     onPress: () => void;
   }) => (
     <TouchableOpacity
-      activeOpacity={0.9}
+      activeOpacity={0.8}
       onPress={onPress}
       style={{
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 6,
+        paddingVertical: 8,
       }}
       accessibilityRole="button"
       accessibilityLabel={label}
     >
       <View
         style={{
-          padding: 6,
-          borderRadius: 999,
+          paddingHorizontal: 20,
+          paddingVertical: 6,
+          borderRadius: 20,
           backgroundColor: active ? activeBg : 'transparent',
+          marginBottom: 4,
         }}
       >
-        {icon}
+        {React.cloneElement(icon as React.ReactElement, {
+          color: active ? activeIconColor : iconColor,
+          size: 24,
+        })}
       </View>
       <Text
         style={{
-          marginTop: 2,
-          fontSize: 12,
-          fontWeight: '600',
-          color: labelColor,
-          opacity: active ? 1 : 0.85,
+          fontSize: 11,
+          fontWeight: active ? '700' : '500',
+          color: active ? activeIconColor : iconColor,
         }}
       >
         {label}
@@ -89,34 +95,45 @@ function GlobalBottomNav() {
     <View
       style={{
         backgroundColor: brand,
-        borderTopColor: brand,
-        borderTopWidth: 1,
-        paddingTop: 4,
-        paddingBottom: Math.max(10, insets.bottom),
-        height: 76 + insets.bottom,
+        borderTopColor: isDark ? '#222' : theme.border,
+        borderTopWidth: 0.5,
+        paddingTop: 8,
+        paddingBottom: Math.max(8, insets.bottom),
+        height: 70 + Math.max(10, insets.bottom), // Adjusted height
         flexDirection: 'row',
+        ...Platform.select({
+          ios: {
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: -2 },
+            shadowOpacity: 0.05,
+            shadowRadius: 8,
+          },
+          android: {
+            elevation: 8,
+          },
+        }),
       }}
     >
       <Item
-        icon={<Home size={22} color={iconColor} />}
+        icon={<Home />}
         label="Home"
         active={isHome}
         onPress={() => go('/')}
       />
       <Item
-        icon={<Store size={22} color={iconColor} />}
+        icon={<Store />}
         label="Shops"
         active={isShops}
         onPress={() => go('/shops')}
       />
       <Item
-        icon={<MapPin size={22} color={iconColor} />}
+        icon={<MapPin />}
         label="Map"
         active={isMap}
         onPress={() => go('/map')}
       />
       <Item
-        icon={<ShoppingCart size={22} color={iconColor} />}
+        icon={<ShoppingCart />}
         label="Pre-Bill"
         active={isPrebill}
         onPress={() => go('/prebill')}
@@ -125,6 +142,9 @@ function GlobalBottomNav() {
   );
 }
 
+// ----------------------
+// ✅ Customer Shell with Header + Nav
+// ----------------------
 function CustomerShell() {
   const { theme, mode } = useTheme();
   const router = useRouter();
@@ -142,8 +162,8 @@ function CustomerShell() {
         <AppHeader
           bgColor={theme.primary}
           tintColor="#ffffff"
-          onPressFavorites={() => router.replace('/favorites')}
-          onPressSettings={() => router.replace('/settings')}
+          onPressFavorites={() => router.push('/favorites')}
+          onPressSettings={() => router.push('/settings')}
         />
       )}
 
@@ -156,7 +176,9 @@ function CustomerShell() {
   );
 }
 
-// 👇 New: Shop Owner Layout
+// ----------------------
+// ✅ Shop Owner Shell
+// ----------------------
 function ShopOwnerShell() {
   const { theme, mode } = useTheme();
   const router = useRouter();
@@ -170,13 +192,12 @@ function ShopOwnerShell() {
         backgroundColor={theme.primary}
       />
 
-      {/* For Shop Owners, you could make a different header/navigation */}
       {!isAuth && (
         <AppHeader
           bgColor={theme.primary}
           tintColor="#ffffff"
           onPressFavorites={() => {}}
-          onPressSettings={() => router.replace('/settings')}
+          onPressSettings={() => router.push('/settings')}
         />
       )}
 
@@ -184,22 +205,26 @@ function ShopOwnerShell() {
         <Slot />
       </View>
 
-      {/* 👇 For now, keep customer bottom nav hidden. 
-          Later, you can build custom ShopOwner Nav (like Products, Orders, etc.) */}
+      {/* ⛔ BottomNav is **not** shown for Owners (can be added later if needed) */}
     </SafeAreaView>
   );
 }
 
+// ----------------------
+// ✅ Root Layout
+// ----------------------
 export default function RootLayout() {
   useFrameworkReady();
-  const { user } = useContext(AuthContext); // 👈 get user role
+
+  const auth = useContext(AuthContext); // 🔐 Using context directly
+  const userRole = auth?.user?.role;
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
         <AppProvider>
-          {/* 👇 Conditional Layout: Customer vs Shop Owner */}
-          {user?.role === 'SHOP_OWNER' ? <ShopOwnerShell /> : <CustomerShell />}
+          {/* 🧠 Decide layout based on user.role */}
+          {userRole === 'SHOP_OWNER' ? <ShopOwnerShell /> : <CustomerShell />}
           <ThemedToast />
         </AppProvider>
       </ThemeProvider>
