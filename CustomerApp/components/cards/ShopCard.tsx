@@ -1,5 +1,4 @@
-// E:\Axivers\QuickShop-Final\components\cards\ShopCard.tsx
-
+// components/cards/ShopCard.tsx
 
 import React, { memo } from 'react';
 import {
@@ -10,6 +9,7 @@ import {
   StyleSheet,
   ViewStyle,
   ImageStyle,
+  Platform,
 } from 'react-native';
 import { Star, MapPin, Heart } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -46,7 +46,8 @@ const ShopCardComp: React.FC<Props> = ({
   isFavorite = false,
   onToggleFavorite,
 }) => {
-  const { theme } = useTheme();
+  const { theme, mode } = useTheme();
+  const isDark = mode === 'dark';
 
   // Normalise backend & old‑mock fields
   const imageUri =
@@ -54,10 +55,8 @@ const ShopCardComp: React.FC<Props> = ({
     (shop as any).shop_image ||
     'https://cdn-icons-png.flaticon.com/512/3536/3536959.png';
 
-  const name = shop.name || (shop as any).shop_name || 'Unnamed Shop';
-
+  const name = shop.name || (shop as any).shop_name || 'Unnamed Shop';
   const address = shop.address || (shop as any).shop_address || '';
-
   const category = shop.category || (shop as any).shop_category || '';
 
   const openFlag =
@@ -68,7 +67,7 @@ const ShopCardComp: React.FC<Props> = ({
       : true;
 
   const rating =
-    typeof shop.rating === 'number' && shop.rating > 0 ? shop.rating : 4.0; // default placeholder
+    typeof shop.rating === 'number' && shop.rating > 0 ? shop.rating : 4.0;
 
   const distanceValue =
     typeof (shop as any).distance === 'number'
@@ -79,10 +78,9 @@ const ShopCardComp: React.FC<Props> = ({
 
   const distanceLabel =
     showDistance && typeof distanceValue === 'number'
-      ? `${distanceValue.toFixed(1)} km`
+      ? `${distanceValue.toFixed(1)} km`
       : undefined;
 
-  // -------------
   return (
     <TouchableOpacity
       activeOpacity={onPress ? 0.9 : 1}
@@ -90,14 +88,26 @@ const ShopCardComp: React.FC<Props> = ({
       testID={testID}
       accessibilityRole={onPress ? 'button' : undefined}
       accessibilityLabel={`${name}${
-        showOpenBadge ? (openFlag ? ', open' : ', closed') : ''
-      }${distanceLabel ? `, ${distanceLabel}` : ''}`}
+        showOpenBadge ? (openFlag ? ', open' : ', closed') : ''
+      }${distanceLabel ? `, ${distanceLabel}` : ''}`}
       style={[
         styles.card,
         {
           backgroundColor: theme.surface,
+          // In dark mode, a thin border helps separation. In light mode, shadow is enough.
+          borderWidth: isDark ? 1 : 0,
           borderColor: theme.border,
-          shadowColor: '#000',
+          ...Platform.select({
+            ios: {
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: isDark ? 0.3 : 0.08,
+              shadowRadius: 8,
+            },
+            android: {
+              elevation: 3,
+            },
+          }),
         },
         containerStyle,
       ]}
@@ -116,7 +126,7 @@ const ShopCardComp: React.FC<Props> = ({
       )}
 
       {/* ---------- Text Content ---------- */}
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, justifyContent: 'center' }}>
         {/* Name + Open/Closed chip */}
         <View style={styles.nameRow}>
           <Text style={[styles.name, { color: theme.text }]} numberOfLines={1}>
@@ -128,8 +138,8 @@ const ShopCardComp: React.FC<Props> = ({
               style={[
                 styles.stateChip,
                 {
-                  backgroundColor: openFlag ? '#16a34a1A' : '#ef44441A',
-                  borderColor: openFlag ? '#16a34a' : '#ef4444',
+                  backgroundColor: openFlag ? '#16a34a15' : '#ef444415',
+                  // Remove border for cleaner look, just use bg
                 },
               ]}
             >
@@ -137,7 +147,8 @@ const ShopCardComp: React.FC<Props> = ({
                 style={{
                   color: openFlag ? '#16a34a' : '#ef4444',
                   fontSize: 10,
-                  fontWeight: '800',
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
                 }}
               >
                 {openFlag ? 'Open' : 'Closed'}
@@ -157,19 +168,21 @@ const ShopCardComp: React.FC<Props> = ({
           ]}
         >
           <View style={styles.metaItem}>
-            <Star size={14} color="#F5A623" fill="#F5A623" />
+            <Star size={13} color="#F5A623" fill="#F5A623" />
             <Text style={[styles.metaText, { color: theme.text }]}>
               {rating.toFixed(1)}
             </Text>
           </View>
 
           {distanceLabel && (
-            <View style={styles.metaItem}>
-              <MapPin size={14} color={theme.textSecondary} />
-              <Text style={[styles.metaText, { color: theme.textSecondary }]}>
-                {distanceLabel}
-              </Text>
-            </View>
+            <>
+              <Text style={{ color: theme.textSecondary, marginHorizontal: 4 }}>•</Text>
+              <View style={styles.metaItem}>
+                <Text style={[styles.metaText, { color: theme.textSecondary, marginLeft: 0 }]}>
+                  {distanceLabel}
+                </Text>
+              </View>
+            </>
           )}
         </View>
 
@@ -185,7 +198,7 @@ const ShopCardComp: React.FC<Props> = ({
           <Text
             style={[
               styles.address,
-              { color: theme.textSecondary, fontStyle: 'italic' },
+              { color: theme.primary, fontWeight: '500', marginTop: 2 },
             ]}
             numberOfLines={1}
           >
@@ -198,12 +211,11 @@ const ShopCardComp: React.FC<Props> = ({
       {showFavoriteIcon && (
         <TouchableOpacity
           onPress={() => onToggleFavorite?.(shop)}
-          hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+          hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
           style={[
             styles.favBtn,
             {
-              borderColor: theme.border,
-              backgroundColor: theme.surface,
+              backgroundColor: isFavorite ? `${theme.primary}15` : 'transparent',
             },
           ]}
           accessibilityRole="button"
@@ -212,7 +224,7 @@ const ShopCardComp: React.FC<Props> = ({
           }
         >
           <Heart
-            size={18}
+            size={20}
             color={isFavorite ? theme.primary : theme.textSecondary}
             fill={isFavorite ? theme.primary : 'transparent'}
           />
@@ -229,68 +241,61 @@ const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 10,
+    borderRadius: 16, // Increased radius
+    padding: 12,
     marginHorizontal: 8,
     marginVertical: 6,
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
   },
   image: {
-    width: 48,
-    height: 48,
-    borderRadius: 10,
-    marginRight: 10,
+    width: 56,
+    height: 56,
+    borderRadius: 12,
+    marginRight: 12,
+    backgroundColor: '#f0f0f0',
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 2,
   },
   name: {
-    flexShrink: 1,
+    flex: 1,
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '700',
     marginRight: 8,
+    letterSpacing: -0.3,
   },
   stateChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 999,
-    borderWidth: 1,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
-    flexWrap: 'wrap',
+    marginTop: 2,
   },
   metaItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginRight: 10,
   },
   metaText: {
-    marginLeft: 6,
-    fontSize: 12.5,
+    marginLeft: 4,
+    fontSize: 12,
     fontWeight: '600',
   },
   address: {
     fontSize: 12,
-    marginTop: 4,
+    marginTop: 2,
   },
   favBtn: {
-    height: 32,
-    width: 32,
-    borderRadius: 999,
-    borderWidth: 1,
+    height: 36,
+    width: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,
-    marginRight: 2,
-    alignSelf: 'flex-start',
   },
 });
 

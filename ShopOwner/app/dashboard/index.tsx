@@ -119,7 +119,7 @@ export default function DashboardScreen() {
 
   const handleOfferPress = () => {
     // This can navigate to the dedicated offers screen as well
-    router.push({ pathname: '/offers' });
+    router.push({ pathname: '/offers/index' });
   };
 
   return (
@@ -218,20 +218,20 @@ export default function DashboardScreen() {
         <DashboardButton
           label="Products"
           icon={<ShoppingBag size={24} color={theme.primary} />}
-          onPress={() => router.push({ pathname: '/products' })}
+          onPress={() => router.push({ pathname: '/products/index' })}
           theme={theme}
         />
         <DashboardButton
           label="Orders"
           icon={<PackageSearch size={24} color={theme.primary} />}
-          onPress={() => router.push({ pathname: '/orders' })}
+          onPress={() => router.push({ pathname: '/orders/index' })}
           theme={theme}
         />
         {/* 👇 2. ADDED THE NEW "MANAGE OFFERS" BUTTON */}
         <DashboardButton
           label="Manage Offers"
           icon={<Tag size={24} color={theme.primary} />}
-          onPress={() => router.push({ pathname: '/offers' })}
+          onPress={() => router.push({ pathname: '/offers/index' })}
           theme={theme}
         />
         <DashboardButton

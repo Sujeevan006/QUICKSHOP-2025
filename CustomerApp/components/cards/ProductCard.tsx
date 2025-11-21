@@ -31,6 +31,10 @@ export const ProductCard: React.FC<Props> = memo(
     testID,
   }) => {
     const { theme } = useTheme();
+
+    // Guard against missing product
+    if (!product) return null;
+
     const p: any = product;
 
     const imageUrl: string | undefined =
@@ -70,7 +74,8 @@ export const ProductCard: React.FC<Props> = memo(
         ? { label: 'Low stock', color: warning }
         : { label: 'In stock', color: success };
 
-    const styles = StyleSheet.create({
+    // Dynamic styles based on theme
+    const styles = useMemo(() => StyleSheet.create({
       card: {
         backgroundColor: theme.surface,
         borderRadius: 12,
@@ -78,7 +83,7 @@ export const ProductCard: React.FC<Props> = memo(
         margin: 6,
         flex: 1,
         minWidth: 150,
-        maxWidth: '48%',
+        // maxWidth: '48%', // Removed to allow parent control
         alignItems: 'center',
         borderWidth: 1,
         borderColor: theme.border,
@@ -144,7 +149,7 @@ export const ProductCard: React.FC<Props> = memo(
         marginBottom: 8,
         backgroundColor: theme.border,
       },
-    });
+    }), [theme, availConfig]);
 
     return (
       <TouchableOpacity

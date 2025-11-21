@@ -1,4 +1,4 @@
-// E:\Axivers\NearBuy Project\shop-owner\context\AuthContext.tsx
+// context/AuthContext.tsx
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, ReactNode, useEffect, useState } from 'react';
@@ -35,18 +35,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const loadStorage = async () => {
       try {
-        const storedUser = await AsyncStorage.getItem('user');
-        const storedToken = await AsyncStorage.getItem('token');
+        const [storedUser, storedToken] = await Promise.all([
+          AsyncStorage.getItem('user'),
+          AsyncStorage.getItem('token'),
+        ]);
+
         if (storedUser && storedToken) {
           setUser(JSON.parse(storedUser));
           setToken(storedToken);
         }
       } catch (err) {
+        console.warn('Failed to load session from storage', err);
         await AsyncStorage.multiRemove(['user', 'token']);
       } finally {
         setLoading(false);
       }
     };
+
     loadStorage();
   }, []);
 

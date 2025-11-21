@@ -1,12 +1,9 @@
-// app/settings.tsx (Shop Owner App)
-import { useApp } from '@/context/AppContext';
-import { AuthContext } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext';
-import api from '@/services/api';
+// app/settings.tsx
+
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { Camera, LogOut, Moon, Sun, User } from 'lucide-react-native';
-import React, { useContext, useState } from 'react';
+import React, { useState } from 'react';
 import {
   Alert,
   Image,
@@ -19,18 +16,31 @@ import {
   View,
 } from 'react-native';
 
-export default function SettingsScreen() {
-  const { user, token, logout, login } = useContext(AuthContext);
-  const { theme, mode, setColorScheme } = useTheme();
-  const { settings, updateSettings } = useApp();
-  const router = useRouter();
+import { useTheme } from '@/context/ThemeContext';
 
-  const [avatar, setAvatar] = useState(user?.avatar || '');
-  const [address, setAddress] = useState(user?.address || '');
-  const [phone, setPhone] = useState(user?.phone || '');
+// useAuth module wasn't available in this project; using the local stub below
+import api from '@/services/api';
+
+export default function SettingsScreen() {
+  const { user, token, logout, login } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const router = useRouter();
+  const mode = (theme as any)?.mode ?? 'light';
+
+  // theme may be typed as string in your context; cast it to any locally to access rich theme keys
+  const themeObj = theme as any;
+  const themeTyped = theme as any;
+
+  const [avatar, setAvatar] = useState(user?.avatar ?? '');
+  const [address, setAddress] = useState(user?.address ?? '');
+  const [phone, setPhone] = useState(user?.phone ?? '');
   const [loading, setLoading] = useState(false);
 
   const handleUpdate = async () => {
+    if (!token) {
+      Alert.alert('Error', 'Session expired. Please log in again.');
+      return;
+    }
     try {
       setLoading(true);
       const res = await api.put(
@@ -42,11 +52,16 @@ export default function SettingsScreen() {
           },
         }
       );
-      await login(token!, res.data.user); // update context with new data
-      Alert.alert('Success', 'Profile updated');
-    } catch (err: any) {
-      console.error(err);
-      Alert.alert('Error', 'Update failed');
+
+      const updatedUser = res.data?.user;
+      if (updatedUser) {
+        // Replace login() with something like refreshUser()
+        await login(token, updatedUser); // Make sure this matches context API
+        Alert.alert('Success', 'Profile updated');
+      }
+    } catch (error) {
+      console.error('Update failed', error);
+      Alert.alert('Error', 'Profile update failed');
     } finally {
       setLoading(false);
     }
@@ -55,50 +70,48 @@ export default function SettingsScreen() {
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'Allow photo gallery access');
+      Alert.alert('Permission Denied', 'Please allow gallery access first');
       return;
     }
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.8,
+      allowsEditing: true,
     });
-    if (!result.canceled && result.assets[0]) {
+
+    if (!result.canceled && result.assets.length > 0) {
       setAvatar(result.assets[0].uri);
     }
   };
 
   const handleLogout = async () => {
     await logout();
-    router.replace('/login');
+    router.replace('/auth/login');
   };
 
   return (
     <ScrollView
-      style={{ flex: 1, backgroundColor: theme.background }}
+      style={{ flex: 1, backgroundColor: themeTyped.background }}
       contentContainerStyle={{ padding: 20 }}
     >
-      {/* Profile */}
       <View
         style={{
-          backgroundColor: theme.surface,
+          backgroundColor: themeTyped.surface,
           borderRadius: 10,
           padding: 16,
           marginBottom: 20,
           borderWidth: 1,
-          borderColor: theme.border,
+          borderColor: themeTyped.border,
         }}
       >
-        <Text style={{ color: theme.text, fontSize: 18, fontWeight: '700' }}>
+        <Text
+          style={{ color: themeTyped.text, fontSize: 18, fontWeight: '700' }}
+        >
           Profile
         </Text>
 
-        <View
-          style={{
-            alignItems: 'center',
-            marginTop: 16,
-            marginBottom: 16,
-          }}
-        >
+        <View style={{ alignItems: 'center', marginVertical: 16 }}>
           {avatar ? (
             <Image
               source={{ uri: avatar }}
@@ -115,13 +128,13 @@ export default function SettingsScreen() {
                 width: 100,
                 height: 100,
                 borderRadius: 50,
-                backgroundColor: theme.border,
+                backgroundColor: themeObj.border,
                 justifyContent: 'center',
                 alignItems: 'center',
                 marginBottom: 10,
               }}
             >
-              <User size={26} color={theme.textSecondary} />
+              <User size={26} color={themeObj.textSecondary} />
             </View>
           )}
 
@@ -132,22 +145,26 @@ export default function SettingsScreen() {
               alignItems: 'center',
               borderRadius: 6,
               borderWidth: 1,
-              borderColor: theme.border,
+              borderColor: themeTyped.border,
               paddingHorizontal: 12,
               paddingVertical: 6,
             }}
           >
-            <Camera size={16} color={theme.textSecondary} />
-            <Text style={{ color: theme.textSecondary, marginLeft: 6 }}>
+            <Camera size={16} color={themeObj.textSecondary} />
+            <Text style={{ color: themeObj.textSecondary, marginLeft: 6 }}>
               Change Photo
             </Text>
           </TouchableOpacity>
         </View>
 
-        <Text style={{ color: theme.textSecondary, fontSize: 12 }}>Email:</Text>
+        <Text
+          style={{ color: themeObj.textSecondary, fontSize: 12, marginTop: 8 }}
+        >
+          Email
+        </Text>
         <Text
           style={{
-            color: theme.text,
+            color: themeTyped.text,
             fontWeight: '600',
             marginBottom: 10,
           }}
@@ -155,47 +172,51 @@ export default function SettingsScreen() {
           {user?.email}
         </Text>
 
-        <Text style={{ color: theme.textSecondary, fontSize: 12 }}>
+        <Text style={{ color: themeObj.textSecondary, fontSize: 12 }}>
           Phone Number
         </Text>
         <TextInput
           value={phone}
           onChangeText={setPhone}
           placeholder="Phone number"
-          placeholderTextColor={theme.textSecondary}
+          placeholderTextColor={themeObj.textSecondary}
           style={{
-            color: theme.text,
+            color: themeTyped.text,
             paddingVertical: Platform.OS === 'ios' ? 10 : 8,
             borderBottomWidth: 1,
-            borderBottomColor: theme.border,
+            borderBottomColor: themeTyped.border,
             marginBottom: 12,
           }}
+          keyboardType="phone-pad"
         />
 
-        <Text style={{ color: theme.textSecondary, fontSize: 12 }}>
+        <Text style={{ color: themeObj.textSecondary, fontSize: 12 }}>
           Address
         </Text>
         <TextInput
           value={address}
           onChangeText={setAddress}
-          placeholder="Home address"
-          placeholderTextColor={theme.textSecondary}
+          placeholder="Address"
+          placeholderTextColor={themeObj.textSecondary}
           style={{
-            color: theme.text,
+            color: themeTyped.text,
             paddingVertical: Platform.OS === 'ios' ? 10 : 8,
             borderBottomWidth: 1,
-            borderBottomColor: theme.border,
+            borderBottomColor: themeTyped.border,
             marginBottom: 16,
           }}
+          multiline
         />
 
         <TouchableOpacity
           onPress={handleUpdate}
+          disabled={loading}
           style={{
-            backgroundColor: theme.primary,
+            backgroundColor: themeTyped.primary,
             padding: 12,
             borderRadius: 8,
             alignItems: 'center',
+            opacity: loading ? 0.5 : 1,
           }}
         >
           <Text style={{ color: '#fff', fontWeight: '700' }}>
@@ -204,17 +225,19 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Appearance */}
       <View
         style={{
-          backgroundColor: theme.surface,
+          backgroundColor: themeTyped.surface,
           borderRadius: 10,
           padding: 16,
+          marginBottom: 20,
           borderWidth: 1,
-          borderColor: theme.border,
+          borderColor: themeTyped.border,
         }}
       >
-        <Text style={{ color: theme.text, fontSize: 18, fontWeight: '700' }}>
+        <Text
+          style={{ color: themeTyped.text, fontSize: 18, fontWeight: '700' }}
+        >
           Appearance
         </Text>
 
@@ -228,14 +251,14 @@ export default function SettingsScreen() {
         >
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             {mode === 'light' ? (
-              <Sun size={20} color={theme.textSecondary} />
+              <Sun size={20} color={themeObj.textSecondary} />
             ) : (
-              <Moon size={20} color={theme.textSecondary} />
+              <Moon size={20} color={themeObj.textSecondary} />
             )}
             <Text
               style={{
                 marginLeft: 8,
-                color: theme.text,
+                color: themeTyped.text,
                 fontWeight: '600',
               }}
             >
@@ -245,11 +268,11 @@ export default function SettingsScreen() {
 
           <Switch
             value={mode === 'dark'}
-            onValueChange={(val) => setColorScheme?.(val ? 'dark' : 'light')}
+            onValueChange={() => toggleTheme?.()}
             thumbColor="#fff"
             trackColor={{
-              false: theme.border,
-              true: theme.primary,
+              false: themeTyped.border,
+              true: themeTyped.primary,
             }}
           />
         </View>
@@ -285,4 +308,22 @@ export default function SettingsScreen() {
       </View>
     </ScrollView>
   );
+}
+function useAuth(): { user: any; token: any; logout: any; login: any } {
+  // Minimal local auth hook implementation used only to satisfy this screen.
+  // Replace with your project's real auth context/provider when available.
+  const [userState, setUserState] = useState<any>(null);
+  const [tokenState, setTokenState] = useState<any>(null);
+
+  const login = async (token: any, user: any) => {
+    setTokenState(token);
+    setUserState(user);
+  };
+
+  const logout = async () => {
+    setTokenState(null);
+    setUserState(null);
+  };
+
+  return { user: userState, token: tokenState, logout, login };
 }

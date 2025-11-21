@@ -7,8 +7,9 @@ import {
   StyleProp,
   ViewStyle,
   TextStyle,
+  Platform,
 } from 'react-native';
-import { X as CloseIcon } from 'lucide-react-native';
+import { X as CloseIcon, Search } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 
 type Props = {
@@ -40,7 +41,8 @@ export const SearchBar: React.FC<Props> = ({
   onSubmitEditing,
   testID,
 }) => {
-  const { theme } = useTheme();
+  const { theme, mode } = useTheme();
+  const isDark = mode === 'dark';
   const inputRef = useRef<TextInput>(null);
 
   return (
@@ -56,16 +58,34 @@ export const SearchBar: React.FC<Props> = ({
           flexDirection: 'row',
           alignItems: 'center',
           backgroundColor: theme.surface,
-          borderRadius: 8,
-          borderWidth: 1,
+          borderRadius: 14, // More rounded
+          // In light mode, use shadow instead of border for a cleaner "floating" look
+          // In dark mode, use border for visibility
+          borderWidth: isDark ? 1 : 0,
           borderColor: theme.border,
-          paddingHorizontal: 12,
-          height: 48,
+          ...Platform.select({
+            ios: {
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: isDark ? 0 : 0.05,
+              shadowRadius: 8,
+            },
+            android: {
+              elevation: isDark ? 0 : 2,
+            },
+          }),
+          paddingHorizontal: 14,
+          height: 52, // Slightly taller
         }}
       >
         {leftAccessory ? (
-          <View style={{ marginRight: 8 }}>{leftAccessory}</View>
-        ) : null}
+          <View style={{ marginRight: 10 }}>{leftAccessory}</View>
+        ) : (
+          // Default search icon if no accessory provided, for better UX
+          <View style={{ marginRight: 10 }}>
+             <Search size={20} color={theme.textSecondary} />
+          </View>
+        )}
 
         <TextInput
           ref={inputRef}
@@ -78,6 +98,7 @@ export const SearchBar: React.FC<Props> = ({
             color: theme.text,
             paddingVertical: 8,
             fontSize: 16,
+            fontWeight: '500',
             ...(inputStyle as object),
           }}
           returnKeyType="search"
@@ -91,16 +112,21 @@ export const SearchBar: React.FC<Props> = ({
         {showClearIcon && value.length > 0 && (
           <TouchableOpacity
             onPress={() => (onClear ? onClear() : onChangeText(''))}
-            style={{ padding: 6, marginLeft: 4 }}
+            style={{ 
+              padding: 6, 
+              marginLeft: 4,
+              backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+              borderRadius: 12,
+            }}
             accessibilityRole="button"
             accessibilityLabel="Clear text"
           >
-            <CloseIcon size={18} color={theme.textSecondary} />
+            <CloseIcon size={14} color={theme.textSecondary} />
           </TouchableOpacity>
         )}
 
         {rightAccessory ? (
-          <View style={{ marginLeft: 8 }}>{rightAccessory}</View>
+          <View style={{ marginLeft: 10 }}>{rightAccessory}</View>
         ) : null}
       </View>
     </View>

@@ -1,3 +1,5 @@
+// E:\Axivers\QUICKSHOP-2025\ShopOwner\app\products\add-product.tsx
+
 import { AuthContext } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import api from '@/services/api';

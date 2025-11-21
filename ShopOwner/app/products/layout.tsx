@@ -1,5 +1,6 @@
+// app/products/_layout.tsx
+
 import { Stack } from 'expo-router';
-import React from 'react';
 
 export default function ProductsLayout() {
   return (
@@ -10,12 +11,11 @@ export default function ProductsLayout() {
           headerTitle: 'Products & Offers',
         }}
       />
-      {/* The following screens will be presented as transparent modals */}
       <Stack.Screen
         name="add-product"
         options={{
           presentation: 'transparentModal',
-          headerShown: false, // We will create a custom header inside the modal
+          headerShown: false,
         }}
       />
       <Stack.Screen

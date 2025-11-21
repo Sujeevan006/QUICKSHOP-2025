@@ -1,4 +1,4 @@
-import { Offer } from '@/types/indextypes'; // We will define this type in the next step
+import { Offer } from '@/types'; // We will define this type in the next step
 import { Trash2 } from 'lucide-react-native';
 import React from 'react';
 import {

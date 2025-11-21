@@ -1,7 +1,7 @@
 import OfferItem from '@/components/OfferItem';
 import { AuthContext } from '@/context/AuthContext';
 import api from '@/services/api';
-import { Offer } from '@/types/indextypes';
+import { Offer } from '@/types';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { PlusCircle } from 'lucide-react-native';
 import React, { useCallback, useContext, useState } from 'react';
