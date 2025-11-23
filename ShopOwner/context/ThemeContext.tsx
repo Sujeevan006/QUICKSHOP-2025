@@ -35,6 +35,7 @@ interface ThemeContextType {
   colors: typeof themes.light; // This will hold the color object
   themeName: 'light' | 'dark'; // This will hold the name of the theme
   toggleTheme: () => void;
+  setTheme: (theme: 'light' | 'dark') => void;
   isThemeLoading: boolean;
 }
 
@@ -70,6 +71,11 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     await AsyncStorage.setItem('app-theme', newThemeName);
   };
 
+  const setTheme = async (newTheme: 'light' | 'dark') => {
+    setThemeName(newTheme);
+    await AsyncStorage.setItem('app-theme', newTheme);
+  };
+
   const colors = themes[themeName];
 
   if (isThemeLoading) {
@@ -83,6 +89,7 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
         theme: colors.theme,
         themeName,
         toggleTheme,
+        setTheme,
         isThemeLoading,
         surface: colors.surface,
         border: colors.border,

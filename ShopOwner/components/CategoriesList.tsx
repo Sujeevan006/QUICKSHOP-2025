@@ -2,20 +2,21 @@ import { AuthContext } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import api from '@/services/api';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { PlusCircle, Tag } from 'lucide-react-native';
+import { ChevronRight, FolderOpen, Plus } from 'lucide-react-native';
 import React, { useCallback, useContext, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
+  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function CategoriesList() {
   const { token } = useContext(AuthContext);
-  const  theme  = useTheme();
+  const theme = useTheme();
   const router = useRouter();
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,53 +43,65 @@ export default function CategoriesList() {
 
   if (loading) {
     return (
-      <ActivityIndicator
-        size="large"
-        color={theme.primary}
-        style={{ marginTop: 40 }}
-      />
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+      </View>
     );
   }
 
   return (
     <View style={[styles.scene, { backgroundColor: theme.background }]}>
-      <FlatList
+      <Animated.FlatList
         data={categories}
         keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() =>
-              router.push({
-                pathname: '/products/manage-category',
-                params: { id: item.id, name: item.name },
-              })
-            }
-          >
-            <View
-              style={[
+        renderItem={({ item, index }) => (
+          <Animated.View entering={FadeInDown.delay(index * 50).duration(400)}>
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: '/products/manage-category',
+                  params: { id: item.id, name: item.name },
+                })
+              }
+              style={({ pressed }) => [
                 styles.categoryItem,
-                { backgroundColor: theme.surface, borderColor: theme.border },
+                {
+                  backgroundColor: theme.surface,
+                  borderColor: theme.border,
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
+                },
               ]}
             >
-              <Tag size={18} color={theme.textSecondary} />
+              <View style={[styles.iconCircle, { backgroundColor: theme.background }]}>
+                <FolderOpen size={20} color={theme.primary} />
+              </View>
               <Text style={[styles.categoryName, { color: theme.text }]}>
                 {item.name}
               </Text>
-            </View>
-          </TouchableOpacity>
+              <ChevronRight size={20} color={theme.textSecondary} />
+            </Pressable>
+          </Animated.View>
         )}
         ListEmptyComponent={
-          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-            No categories found. Tap below to add one!
-          </Text>
+          <View style={styles.emptyContainer}>
+            <FolderOpen size={48} color={theme.textSecondary} style={{ marginBottom: 16 }} />
+            <Text style={[styles.emptyText, { color: theme.text }]}>
+              No categories yet
+            </Text>
+            <Text style={[styles.emptySubText, { color: theme.textSecondary }]}>
+              Tap below to add your first category
+            </Text>
+          </View>
         }
-        contentContainerStyle={{ padding: 16 }}
+        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
       />
       <TouchableOpacity
-        onPress={() => router.push('/products/manage-category')}
+        onPress={() => router.push('/products/add-category')}
         style={[styles.fab, { backgroundColor: theme.primary }]}
+        activeOpacity={0.8}
       >
-        <PlusCircle size={22} color="#fff" />
+        <Plus size={24} color="#fff" />
         <Text style={styles.fabText}>Add Category</Text>
       </TouchableOpacity>
     </View>
@@ -97,23 +110,68 @@ export default function CategoriesList() {
 
 const styles = StyleSheet.create({
   scene: { flex: 1 },
-  emptyText: { textAlign: 'center', marginTop: 30, fontSize: 16 },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    marginTop: 80,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  emptySubText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
   fab: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 10,
+    paddingVertical: 16,
+    borderRadius: 16,
     margin: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  fabText: { color: '#fff', fontWeight: '700', marginLeft: 6 },
+  fabText: {
+    color: '#fff',
+    fontWeight: '700',
+    marginLeft: 8,
+    fontSize: 16,
+  },
   categoryItem: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    borderRadius: 8,
-    marginBottom: 10,
+    borderRadius: 16,
+    marginBottom: 12,
     borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  categoryName: { flex: 1, marginLeft: 10, fontSize: 16, fontWeight: '600' },
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  categoryName: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });

@@ -1,4 +1,5 @@
-import { Offer } from '@/types/indextypes'; // We will define this type in the next step
+import { useTheme } from '@/context/ThemeContext';
+import { Offer } from '@/types';
 import { Trash2 } from 'lucide-react-native';
 import React from 'react';
 import {
@@ -16,6 +17,8 @@ interface OfferItemProps {
 }
 
 export default function OfferItem({ offer, onDelete }: OfferItemProps) {
+  const theme = useTheme();
+
   const handleDeletePress = () => {
     Alert.alert(
       'Delete Offer',
@@ -33,19 +36,19 @@ export default function OfferItem({ offer, onDelete }: OfferItemProps) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.surface, shadowColor: theme.text }]}>
       <Image source={{ uri: offer.banner_image_url }} style={styles.banner} />
       <View style={styles.details}>
         <View style={styles.header}>
-          <Text style={styles.title}>{offer.title}</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{offer.title}</Text>
           <TouchableOpacity
             onPress={handleDeletePress}
             style={styles.deleteButton}
           >
-            <Trash2 color="#E53935" size={20} />
+            <Trash2 color="#EF4444" size={20} />
           </TouchableOpacity>
         </View>
-        <Text style={styles.description}>{offer.description}</Text>
+        <Text style={[styles.description, { color: theme.textSecondary }]}>{offer.description}</Text>
       </View>
     </View>
   );
@@ -53,41 +56,38 @@ export default function OfferItem({ offer, onDelete }: OfferItemProps) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 16,
     overflow: 'hidden',
     elevation: 3,
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
   banner: {
     width: '100%',
-    height: 150,
+    height: 160,
   },
   details: {
-    padding: 12,
+    padding: 16,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#333',
-    flex: 1, // Allow title to take up space
+    flex: 1,
+    marginRight: 8,
   },
   description: {
     fontSize: 14,
-    color: '#666',
     lineHeight: 20,
   },
   deleteButton: {
-    padding: 8, // Makes it easier to tap
+    padding: 4,
   },
 });

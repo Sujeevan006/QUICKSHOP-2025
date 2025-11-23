@@ -1,21 +1,23 @@
 import OfferItem from '@/components/OfferItem';
 import { AuthContext } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
 import api from '@/services/api';
-import { Offer } from '@/types/indextypes';
+import { Offer } from '@/types';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { PlusCircle } from 'lucide-react-native';
+import { Plus, Tag } from 'lucide-react-native';
 import React, { useCallback, useContext, useState } from 'react';
 import {
   Alert,
-  FlatList,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function OffersScreen() {
   const { token } = useContext(AuthContext);
+  const theme = useTheme();
   const router = useRouter();
 
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -61,31 +63,36 @@ export default function OffersScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Your Offers</Text>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+        <Text style={[styles.title, { color: theme.text }]}>Your Offers</Text>
         <TouchableOpacity
-          style={styles.addButton}
+          style={[styles.addButton, { backgroundColor: theme.primary }]}
           onPress={() => router.push('/products/add-offer')}
+          activeOpacity={0.8}
         >
-          <PlusCircle color="#fff" size={22} />
+          <Plus color="#fff" size={20} />
           <Text style={styles.addButtonText}>New Offer</Text>
         </TouchableOpacity>
       </View>
 
-      <FlatList
+      <Animated.FlatList
         data={offers}
         keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <OfferItem offer={item} onDelete={handleDeleteOffer} />
+        renderItem={({ item, index }) => (
+          <Animated.View entering={FadeInDown.delay(index * 100).duration(500)}>
+            <OfferItem offer={item} onDelete={handleDeleteOffer} />
+          </Animated.View>
         )}
         contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>
+            <Tag size={48} color={theme.textSecondary} style={{ marginBottom: 16 }} />
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
               You haven't created any offers yet.
             </Text>
-            <Text style={styles.emptySubText}>
+            <Text style={[styles.emptySubText, { color: theme.textSecondary }]}>
               Tap 'New Offer' to get started!
             </Text>
           </View>
@@ -98,37 +105,35 @@ export default function OffersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 15,
-    backgroundColor: '#fff',
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: '800',
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0A84FF',
     paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
   },
   addButtonText: {
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
     marginLeft: 6,
+    fontSize: 14,
   },
   list: {
     padding: 20,
+    paddingBottom: 100,
   },
   emptyContainer: {
     flex: 1,
@@ -139,11 +144,11 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#555',
+    textAlign: 'center',
   },
   emptySubText: {
     fontSize: 14,
-    color: '#888',
     marginTop: 8,
+    textAlign: 'center',
   },
 });

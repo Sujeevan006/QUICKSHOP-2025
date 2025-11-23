@@ -5,23 +5,27 @@ import { useTheme } from '@/context/ThemeContext';
 import api from '@/services/api';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { Camera, LogOut, Moon, Sun, User } from 'lucide-react-native';
+import { Camera, LogOut, MapPin, Moon, Phone, Sun, User } from 'lucide-react-native';
 import React, { useContext, useState } from 'react';
 import {
   Alert,
   Image,
+  KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StyleSheet,
   Switch,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 
 export default function SettingsScreen() {
   const { user, token, logout, login } = useContext(AuthContext);
-  const { theme, mode, setColorScheme } = useTheme();
+  const theme = useTheme();
+  const { themeName, setTheme } = theme;
   const { settings, updateSettings } = useApp();
   const router = useRouter();
 
@@ -43,7 +47,7 @@ export default function SettingsScreen() {
         }
       );
       await login(token!, res.data.user); // update context with new data
-      Alert.alert('Success', 'Profile updated');
+      Alert.alert('Success', 'Profile updated successfully');
     } catch (err: any) {
       console.error(err);
       Alert.alert('Error', 'Update failed');
@@ -68,221 +72,289 @@ export default function SettingsScreen() {
   };
 
   const handleLogout = async () => {
-    await logout();
-    router.replace('/login');
+    Alert.alert('Log Out', 'Are you sure you want to log out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { 
+        text: 'Log Out', 
+        style: 'destructive', 
+        onPress: async () => {
+          await logout();
+          router.replace('/auth/login');
+        }
+      },
+    ]);
   };
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: theme.background }}
-      contentContainerStyle={{ padding: 20 }}
+    <KeyboardAvoidingView 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
     >
-      {/* Profile */}
-      <View
-        style={{
-          backgroundColor: theme.surface,
-          borderRadius: 10,
-          padding: 16,
-          marginBottom: 20,
-          borderWidth: 1,
-          borderColor: theme.border,
-        }}
+      <ScrollView
+        style={{ flex: 1, backgroundColor: theme.background }}
+        contentContainerStyle={{ padding: 20, paddingBottom: 100 }}
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={{ color: theme.text, fontSize: 18, fontWeight: '700' }}>
-          Profile
-        </Text>
+        <Animated.View entering={FadeInDown.delay(100).duration(600)}>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Settings</Text>
+        </Animated.View>
 
-        <View
-          style={{
-            alignItems: 'center',
-            marginTop: 16,
-            marginBottom: 16,
-          }}
+        {/* Profile Section */}
+        <Animated.View 
+          entering={FadeInDown.delay(200).duration(600)}
+          style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.border }]}
         >
-          {avatar ? (
-            <Image
-              source={{ uri: avatar }}
-              style={{
-                width: 100,
-                height: 100,
-                borderRadius: 50,
-                marginBottom: 10,
-              }}
-            />
-          ) : (
-            <View
-              style={{
-                width: 100,
-                height: 100,
-                borderRadius: 50,
-                backgroundColor: theme.border,
-                justifyContent: 'center',
-                alignItems: 'center',
-                marginBottom: 10,
-              }}
-            >
-              <User size={26} color={theme.textSecondary} />
-            </View>
-          )}
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Profile</Text>
 
-          <TouchableOpacity
-            onPress={pickImage}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              borderRadius: 6,
-              borderWidth: 1,
-              borderColor: theme.border,
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-            }}
-          >
-            <Camera size={16} color={theme.textSecondary} />
-            <Text style={{ color: theme.textSecondary, marginLeft: 6 }}>
-              Change Photo
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={{ color: theme.textSecondary, fontSize: 12 }}>Email:</Text>
-        <Text
-          style={{
-            color: theme.text,
-            fontWeight: '600',
-            marginBottom: 10,
-          }}
-        >
-          {user?.email}
-        </Text>
-
-        <Text style={{ color: theme.textSecondary, fontSize: 12 }}>
-          Phone Number
-        </Text>
-        <TextInput
-          value={phone}
-          onChangeText={setPhone}
-          placeholder="Phone number"
-          placeholderTextColor={theme.textSecondary}
-          style={{
-            color: theme.text,
-            paddingVertical: Platform.OS === 'ios' ? 10 : 8,
-            borderBottomWidth: 1,
-            borderBottomColor: theme.border,
-            marginBottom: 12,
-          }}
-        />
-
-        <Text style={{ color: theme.textSecondary, fontSize: 12 }}>
-          Address
-        </Text>
-        <TextInput
-          value={address}
-          onChangeText={setAddress}
-          placeholder="Home address"
-          placeholderTextColor={theme.textSecondary}
-          style={{
-            color: theme.text,
-            paddingVertical: Platform.OS === 'ios' ? 10 : 8,
-            borderBottomWidth: 1,
-            borderBottomColor: theme.border,
-            marginBottom: 16,
-          }}
-        />
-
-        <TouchableOpacity
-          onPress={handleUpdate}
-          style={{
-            backgroundColor: theme.primary,
-            padding: 12,
-            borderRadius: 8,
-            alignItems: 'center',
-          }}
-        >
-          <Text style={{ color: '#fff', fontWeight: '700' }}>
-            {loading ? 'Saving...' : 'Save Profile'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Appearance */}
-      <View
-        style={{
-          backgroundColor: theme.surface,
-          borderRadius: 10,
-          padding: 16,
-          borderWidth: 1,
-          borderColor: theme.border,
-        }}
-      >
-        <Text style={{ color: theme.text, fontSize: 18, fontWeight: '700' }}>
-          Appearance
-        </Text>
-
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginTop: 16,
-          }}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {mode === 'light' ? (
-              <Sun size={20} color={theme.textSecondary} />
-            ) : (
-              <Moon size={20} color={theme.textSecondary} />
-            )}
-            <Text
-              style={{
-                marginLeft: 8,
-                color: theme.text,
-                fontWeight: '600',
-              }}
-            >
-              {mode === 'light' ? 'Light' : 'Dark'} mode
-            </Text>
+          <View style={styles.avatarContainer}>
+            <TouchableOpacity onPress={pickImage} activeOpacity={0.8}>
+              {avatar ? (
+                <Image source={{ uri: avatar }} style={styles.avatar} />
+              ) : (
+                <View style={[styles.avatarPlaceholder, { backgroundColor: theme.background }]}>
+                  <User size={40} color={theme.textSecondary} />
+                </View>
+              )}
+              <View style={[styles.cameraBadge, { backgroundColor: theme.primary }]}>
+                <Camera size={14} color="#fff" />
+              </View>
+            </TouchableOpacity>
+            <Text style={[styles.userName, { color: theme.text }]}>{user?.name || 'Shop Owner'}</Text>
+            <Text style={[styles.userEmail, { color: theme.textSecondary }]}>{user?.email}</Text>
           </View>
 
-          <Switch
-            value={mode === 'dark'}
-            onValueChange={(val) => setColorScheme?.(val ? 'dark' : 'light')}
-            thumbColor="#fff"
-            trackColor={{
-              false: theme.border,
-              true: theme.primary,
-            }}
-          />
-        </View>
-      </View>
+          <View style={styles.form}>
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Phone Number</Text>
+              <View style={[styles.inputWrapper, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                <Phone size={18} color={theme.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  value={phone}
+                  onChangeText={setPhone}
+                  placeholder="Enter phone number"
+                  placeholderTextColor={theme.textSecondary}
+                  style={[styles.input, { color: theme.text }]}
+                  keyboardType="phone-pad"
+                />
+              </View>
+            </View>
 
-      {/* Logout */}
-      <View style={{ marginTop: 32 }}>
-        <TouchableOpacity
-          onPress={handleLogout}
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'center',
-            alignItems: 'center',
-            borderWidth: 1,
-            borderColor: '#ef4444',
-            borderRadius: 8,
-            paddingVertical: 12,
-            backgroundColor: '#ef444420',
-          }}
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Address</Text>
+              <View style={[styles.inputWrapper, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                <MapPin size={18} color={theme.textSecondary} style={styles.inputIcon} />
+                <TextInput
+                  value={address}
+                  onChangeText={setAddress}
+                  placeholder="Enter shop address"
+                  placeholderTextColor={theme.textSecondary}
+                  style={[styles.input, { color: theme.text }]}
+                />
+              </View>
+            </View>
+
+            <TouchableOpacity
+              onPress={handleUpdate}
+              style={[styles.saveButton, { backgroundColor: theme.primary }]}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.saveButtonText}>
+                {loading ? 'Saving Changes...' : 'Save Changes'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+
+        {/* Appearance Section */}
+        <Animated.View 
+          entering={FadeInDown.delay(300).duration(600)}
+          style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.border }]}
         >
-          <LogOut size={18} color="#ef4444" />
-          <Text
-            style={{
-              color: '#ef4444',
-              fontWeight: '700',
-              marginLeft: 8,
-              fontSize: 16,
-            }}
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Appearance</Text>
+          
+          <View style={styles.row}>
+            <View style={styles.rowLeft}>
+              <View style={[styles.iconBox, { backgroundColor: theme.background }]}>
+                {themeName === 'light' ? (
+                  <Sun size={20} color={theme.text} />
+                ) : (
+                  <Moon size={20} color={theme.text} />
+                )}
+              </View>
+              <Text style={[styles.rowLabel, { color: theme.text }]}>Dark Mode</Text>
+            </View>
+            <Switch
+              value={themeName === 'dark'}
+              onValueChange={(val) => setTheme(val ? 'dark' : 'light')}
+              trackColor={{ false: theme.border, true: theme.primary }}
+              thumbColor="#fff"
+            />
+          </View>
+        </Animated.View>
+
+        {/* Logout Button */}
+        <Animated.View entering={FadeInUp.delay(400).duration(600)}>
+          <TouchableOpacity
+            onPress={handleLogout}
+            style={[styles.logoutButton, { backgroundColor: '#EF444415', borderColor: '#EF4444' }]}
+            activeOpacity={0.7}
           >
-            Log Out
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+            <LogOut size={20} color="#EF4444" />
+            <Text style={styles.logoutText}>Log Out</Text>
+          </TouchableOpacity>
+        </Animated.View>
+
+        <Text style={[styles.versionText, { color: theme.textSecondary }]}>
+          Version 1.0.0
+        </Text>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
+
+const styles = StyleSheet.create({
+  headerTitle: {
+    fontSize: 32,
+    fontWeight: '800',
+    marginBottom: 24,
+    marginTop: 10,
+  },
+  section: {
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 20,
+  },
+  
+  avatarContainer: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  avatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 12,
+  },
+  avatarPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  cameraBadge: {
+    position: 'absolute',
+    bottom: 12,
+    right: 0,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  userName: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  userEmail: {
+    fontSize: 14,
+  },
+  
+  form: {
+    gap: 16,
+  },
+  inputGroup: {
+    gap: 8,
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 4,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 50,
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
+    fontSize: 16,
+  },
+  
+  saveButton: {
+    height: 50,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  rowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  rowLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  logoutButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginBottom: 24,
+  },
+  logoutText: {
+    color: '#EF4444',
+    fontSize: 16,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  
+  versionText: {
+    textAlign: 'center',
+    fontSize: 12,
+  },
+});

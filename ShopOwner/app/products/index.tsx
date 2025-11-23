@@ -1,6 +1,7 @@
-import { themes } from '@/context/ThemeContext';
+import { useTheme } from '@/context/ThemeContext';
 import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
+import { Dimensions, Text } from 'react-native';
 import { SceneMap, TabBar, TabView } from 'react-native-tab-view';
 
 // Import the components for each tab
@@ -10,6 +11,8 @@ import ProductsList from '@/components/ProductsList';
 
 export default function ProductsScreen() {
   const params = useLocalSearchParams<{ tab?: string }>();
+  const theme = useTheme();
+  const layout = Dimensions.get('window');
 
   const [index, setIndex] = useState(0);
   const [routes] = useState([
@@ -37,14 +40,26 @@ export default function ProductsScreen() {
       navigationState={{ index, routes }}
       renderScene={renderScene}
       onIndexChange={setIndex}
+      initialLayout={{ width: layout.width }}
       renderTabBar={(props) => (
         <TabBar
           {...props}
-          indicatorStyle={{ backgroundColor: themes.dark.primary }}
-          style={{ backgroundColor: themes.dark.surface }}
-          labelStyle={{ color: themes.dark.text, fontWeight: '600' }}
-          activeColor={themes.dark.primary}
-          inactiveColor={themes.dark.textSecondary}
+          indicatorStyle={{ backgroundColor: theme.primary, height: 3, borderRadius: 1.5 }}
+          style={{ 
+            backgroundColor: theme.surface, 
+            elevation: 0, 
+            shadowOpacity: 0,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.border,
+          }}
+          renderLabel={({ route, focused, color }) => (
+            <Text style={{ color, fontWeight: '600', textTransform: 'capitalize' }}>
+              {route.title}
+            </Text>
+          )}
+          activeColor={theme.primary}
+          inactiveColor={theme.textSecondary}
+          pressColor={theme.background}
         />
       )}
     />

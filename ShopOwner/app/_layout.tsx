@@ -1,7 +1,7 @@
 import { AppProvider } from '@/context/AppContext';
 import { AuthContext, AuthProvider } from '@/context/AuthContext';
 // 👇 Import the raw `themes` object to access the dark theme directly
-import { ThemeProvider, themes, useTheme } from '@/context/ThemeContext';
+import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { Stack, Tabs } from 'expo-router';
 import {
   Home,
@@ -27,7 +27,7 @@ export default function RootLayout() {
 function LayoutRouter() {
   const { user, loading } = useContext(AuthContext);
   // We still need the dynamic theme for the screen backgrounds
-  const  theme  = useTheme();
+  const theme = useTheme();
 
   if (loading) {
     return (
@@ -61,29 +61,35 @@ function LayoutRouter() {
       initialRouteName="dashboard/index"
       screenOptions={{
         headerShown: true,
-        // 👇 Here we hardcode the DARK THEME colors for navigation
         tabBarStyle: {
-          backgroundColor: themes.dark.surface, // Always dark surface
-          borderTopColor: themes.dark.border, // Always dark border
-          paddingBottom: 8, // Added bottom padding
-          paddingTop: 4, // Added top padding
-          height: 65, // Increase height to accommodate padding
+          backgroundColor: theme.surface,
+          borderTopColor: theme.border,
+          paddingBottom: 8,
+          paddingTop: 8,
+          height: 65,
+          elevation: 0, // Remove default shadow on Android for a cleaner look
+          shadowOpacity: 0, // Remove default shadow on iOS
         },
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: '600',
+          marginBottom: 4,
         },
         headerStyle: {
-          backgroundColor: themes.dark.surface, // Always dark header
+          backgroundColor: theme.surface,
+          elevation: 0, // Remove shadow for cleaner look
+          shadowOpacity: 0,
+          borderBottomWidth: 1,
+          borderBottomColor: theme.border,
         },
         headerTitleStyle: {
-          color: themes.dark.text, // Always light text on header
+          color: theme.text,
           fontSize: 18,
           fontWeight: '700',
         },
-        headerTintColor: themes.dark.text, // Color for back button, etc.
-        tabBarActiveTintColor: themes.dark.primary, // Active tab icon color
-        tabBarInactiveTintColor: themes.dark.textSecondary, // Inactive tab icon
+        headerTintColor: theme.text,
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.textSecondary,
       }}
     >
       <Tabs.Screen
@@ -125,11 +131,16 @@ function LayoutRouter() {
         }}
       />
 
-      {/* HIDDEN SCREENS */}
+      {/* HIDDEN SCREENS - All modal/detail screens */}
       <Tabs.Screen name="auth/login" options={{ href: null }} />
       <Tabs.Screen name="auth/signup" options={{ href: null }} />
       <Tabs.Screen name="products/add-product" options={{ href: null }} />
       <Tabs.Screen name="products/add-offer" options={{ href: null }} />
+      <Tabs.Screen name="products/add-category" options={{ href: null }} />
+      <Tabs.Screen name="products/manage-category" options={{ href: null }} />
+      <Tabs.Screen name="products/layout" options={{ href: null }} />
+      <Tabs.Screen name="offers/index" options={{ href: null }} />
+      <Tabs.Screen name="dashboard" options={{ href: null }} />
     </Tabs>
   );
 }

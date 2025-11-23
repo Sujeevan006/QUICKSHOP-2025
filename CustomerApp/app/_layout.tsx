@@ -14,7 +14,7 @@ import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { AppProvider } from '@/contexts/AppContext';
 import { ThemedToast } from '@/components/common/ThemedToast';
 import { AppHeader } from '@/components/common/AppHeader';
-import { AuthContext } from '@/contexts/AuthContext'; // 👈 ADDED: AuthContext to get role
+import { AuthContext, AuthProvider } from '@/contexts/AuthContext'; // 👈 ADDED: AuthProvider
 
 import { Home, Store, MapPin, ShoppingCart } from 'lucide-react-native';
 
@@ -190,18 +190,23 @@ function ShopOwnerShell() {
   );
 }
 
+function AppContent() {
+  const { user } = useContext(AuthContext);
+  return user?.role === 'SHOP_OWNER' ? <ShopOwnerShell /> : <CustomerShell />;
+}
+
 export default function RootLayout() {
   useFrameworkReady();
-  const { user } = useContext(AuthContext); // 👈 get user role
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
-        <AppProvider>
-          {/* 👇 Conditional Layout: Customer vs Shop Owner */}
-          {user?.role === 'SHOP_OWNER' ? <ShopOwnerShell /> : <CustomerShell />}
-          <ThemedToast />
-        </AppProvider>
+        <AuthProvider>
+          <AppProvider>
+            <AppContent />
+            <ThemedToast />
+          </AppProvider>
+        </AuthProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
   );

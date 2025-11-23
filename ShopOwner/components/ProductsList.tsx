@@ -2,21 +2,22 @@ import { AuthContext } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import api from '@/services/api';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { PlusCircle } from 'lucide-react-native';
+import { Package, Plus } from 'lucide-react-native';
 import React, { useCallback, useContext, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
   Image,
+  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function ProductsList() {
   const { token } = useContext(AuthContext);
-  const  theme  = useTheme();
+  const theme = useTheme();
   const router = useRouter();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,32 +44,35 @@ export default function ProductsList() {
 
   if (loading) {
     return (
-      <ActivityIndicator
-        size="large"
-        color={theme.primary}
-        style={{ marginTop: 40 }}
-      />
+      <View style={[styles.centerContainer, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+      </View>
     );
   }
 
   return (
     <View style={[styles.scene, { backgroundColor: theme.background }]}>
-      <FlatList
+      <Animated.FlatList
         data={products}
         keyExtractor={(item) => String(item.id)}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            onPress={() =>
-              router.push({
-                pathname: '/products/add-product',
-                params: { id: item.id },
-              })
-            }
-          >
-            <View
-              style={[
+        contentContainerStyle={{ padding: 16, paddingBottom: 80 }}
+        showsVerticalScrollIndicator={false}
+        renderItem={({ item, index }) => (
+          <Animated.View entering={FadeInDown.delay(index * 50).duration(400)}>
+            <Pressable
+              onPress={() =>
+                router.push({
+                  pathname: '/products/add-product',
+                  params: { id: item.id },
+                })
+              }
+              style={({ pressed }) => [
                 styles.card,
-                { backgroundColor: theme.surface, borderColor: theme.border },
+                { 
+                  backgroundColor: theme.surface, 
+                  borderColor: theme.border,
+                  transform: [{ scale: pressed ? 0.98 : 1 }]
+                },
               ]}
             >
               {item.product_image ? (
@@ -82,31 +86,47 @@ export default function ProductsList() {
                     styles.imagePlaceholder,
                     { backgroundColor: theme.background },
                   ]}
-                />
+                >
+                  <Package size={24} color={theme.textSecondary} />
+                </View>
               )}
               <View style={styles.detailsContainer}>
-                <Text style={[styles.name, { color: theme.text }]}>
+                <Text style={[styles.name, { color: theme.text }]} numberOfLines={1}>
                   {item.name}
                 </Text>
-                <Text style={{ color: theme.textSecondary }}>
-                  Rs. {item.price} - Stock: {item.stock}
+                <Text style={[styles.price, { color: theme.primary }]}>
+                  Rs. {item.price}
                 </Text>
+                <View style={styles.stockContainer}>
+                  <Text style={[styles.stockLabel, { color: theme.textSecondary }]}>
+                    Stock:
+                  </Text>
+                  <Text style={[styles.stockValue, { color: item.stock > 0 ? theme.text : '#EF4444' }]}>
+                    {item.stock}
+                  </Text>
+                </View>
               </View>
-            </View>
-          </TouchableOpacity>
+            </Pressable>
+          </Animated.View>
         )}
         ListEmptyComponent={
-          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-            No products found. Tap below to add one!
-          </Text>
+          <View style={styles.emptyContainer}>
+            <Package size={48} color={theme.textSecondary} style={{ marginBottom: 12 }} />
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+              No products found.
+            </Text>
+            <Text style={[styles.emptySubText, { color: theme.textSecondary }]}>
+              Add your first product to get started!
+            </Text>
+          </View>
         }
-        contentContainerStyle={{ padding: 16 }}
       />
       <TouchableOpacity
         onPress={() => router.push('/products/add-product')}
         style={[styles.fab, { backgroundColor: theme.primary }]}
+        activeOpacity={0.8}
       >
-        <PlusCircle size={22} color="#fff" />
+        <Plus size={24} color="#fff" />
         <Text style={styles.fabText}>Add Product</Text>
       </TouchableOpacity>
     </View>
@@ -115,33 +135,55 @@ export default function ProductsList() {
 
 const styles = StyleSheet.create({
   scene: { flex: 1 },
-  emptyText: { textAlign: 'center', marginTop: 30, fontSize: 16 },
+  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  emptyContainer: { alignItems: 'center', marginTop: 60 },
+  emptyText: { fontSize: 18, fontWeight: '600' },
+  emptySubText: { fontSize: 14, marginTop: 4 },
+  
   fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
-    borderRadius: 10,
-    margin: 16,
+    paddingHorizontal: 20,
+    borderRadius: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 6,
   },
-  fabText: { color: '#fff', fontWeight: '700', marginLeft: 6 },
+  fabText: { color: '#fff', fontWeight: '700', marginLeft: 8, fontSize: 16 },
+  
   card: {
     borderWidth: 1,
-    borderRadius: 10,
+    borderRadius: 16,
     padding: 12,
-    marginBottom: 10,
+    marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  image: { width: 60, height: 60, borderRadius: 8, marginRight: 12 },
+  image: { width: 70, height: 70, borderRadius: 12, marginRight: 16 },
   imagePlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: '#ddd',
+    width: 70,
+    height: 70,
+    borderRadius: 12,
+    marginRight: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  detailsContainer: { flex: 1 },
+  detailsContainer: { flex: 1, justifyContent: 'center' },
   name: { fontSize: 16, fontWeight: '700', marginBottom: 4 },
+  price: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
+  stockContainer: { flexDirection: 'row', alignItems: 'center' },
+  stockLabel: { fontSize: 13, marginRight: 4 },
+  stockValue: { fontSize: 13, fontWeight: '600' },
 });
