@@ -15,6 +15,7 @@ import {
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useApp } from '@/contexts/AppContext';
+import api, { SERVER_URL } from '@/services/api';
 import { SearchBar } from '@/components/common/SearchBar';
 import { ShopCard } from '@/components/cards/ShopCard';
 import { ProductCard } from '@/components/cards/ProductCard'; // keep if needed elsewhere
@@ -44,26 +45,78 @@ export default function HomeScreen() {
   const [search, setSearch] = useState('');
 
   // Banner slider
-  const banners = useMemo(
-    () => [
-      {
-        id: 'b1',
-        uri: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=1200&q=60',
-      },
-      {
-        id: 'b2',
-        uri: 'https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=1200&q=60',
-      },
-      {
-        id: 'b3',
-        uri: 'https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?w=1200&q=60',
-      },
-    ],
-    []
-  );
+  interface Offer {
+    id: number;
+    title: string;
+    description: string;
+    banner_image_url: string;
+  }
+
+  const [banners, setBanners] = useState<
+    { id: string; uri: string; title: string }[]
+  >([]);
   const [bannerIndex, setBannerIndex] = useState(0);
   const [bannerWidth, setBannerWidth] = useState(0);
   const bannerRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    const fetchOffers = async () => {
+      try {
+        const res = await api.get('/offers');
+        // Assuming res.data is an array of offers
+        const offers: Offer[] = Array.isArray(res.data) ? res.data : [];
+
+        const mappedBanners = offers.map((offer) => {
+          let rawImage = offer.banner_image_url;
+          if (rawImage && !rawImage.startsWith('http')) {
+            rawImage = `${SERVER_URL}${
+              rawImage.startsWith('/') ? '' : '/'
+            }${rawImage}`;
+          }
+          return {
+            id: String(offer.id),
+            uri: rawImage || 'https://via.placeholder.com/1200x600',
+            title: offer.title,
+          };
+        });
+
+        if (mappedBanners.length > 0) {
+          setBanners(mappedBanners);
+        } else {
+          // Fallback if no offers
+          setBanners([
+            {
+              id: 'b1',
+              uri: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=1200&q=60',
+              title: 'Special Offers',
+            },
+            {
+              id: 'b2',
+              uri: 'https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=1200&q=60',
+              title: 'Fresh Arrivals',
+            },
+          ]);
+        }
+      } catch (err) {
+        console.error('Failed to fetch offers:', err);
+        // Fallback on error
+        setBanners([
+          {
+            id: 'b1',
+            uri: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=1200&q=60',
+            title: 'Special Offers',
+          },
+          {
+            id: 'b2',
+            uri: 'https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=1200&q=60',
+            title: 'Fresh Arrivals',
+          },
+        ]);
+      }
+    };
+
+    fetchOffers();
+  }, []);
 
   useEffect(() => {
     if (!bannerWidth || banners.length <= 1) return;
@@ -73,7 +126,7 @@ export default function HomeScreen() {
         bannerRef.current?.scrollTo({ x: next * bannerWidth, animated: true });
         return next;
       });
-    }, 2000);
+    }, 4000); // Increased duration for readability
     return () => clearInterval(id);
   }, [bannerWidth, banners.length]);
 
@@ -353,14 +406,34 @@ export default function HomeScreen() {
             onMomentumScrollEnd={onBannerScrollEnd}
           >
             {banners.map((b) => (
-              <Image
-                key={b.id}
-                source={{ uri: b.uri }}
-                style={{
-                  width: bannerWidth || 0,
-                  height: 150,
-                }}
-              />
+              <View key={b.id} style={{ width: bannerWidth || 0, height: 150 }}>
+                <Image
+                  source={{ uri: b.uri }}
+                  style={{ width: '100%', height: '100%' }}
+                  resizeMode="cover"
+                />
+                <View
+                  style={{
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    padding: 10,
+                    backgroundColor: 'rgba(0,0,0,0.3)',
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: '#fff',
+                      fontWeight: '700',
+                      fontSize: 16,
+                    }}
+                    numberOfLines={1}
+                  >
+                    {b.title}
+                  </Text>
+                </View>
+              </View>
             ))}
           </ScrollView>
         </View>

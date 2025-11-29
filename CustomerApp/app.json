@@ -17,6 +17,7 @@
     "android": {
       "package": "com.anonymous.boltexponativewind",
       "versionCode": 2,
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/favicon.png",
         "backgroundColor": "#1e2e5e"

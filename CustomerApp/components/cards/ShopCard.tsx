@@ -1,6 +1,5 @@
 // E:\Axivers\QuickShop-Final\components\cards\ShopCard.tsx
 
-
 import React, { memo } from 'react';
 import {
   View,
@@ -14,6 +13,7 @@ import {
 import { Star, MapPin, Heart } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { Shop } from '@/types';
+import { SERVER_URL } from '@/services/api';
 
 type Props = {
   shop: Shop;
@@ -49,10 +49,15 @@ const ShopCardComp: React.FC<Props> = ({
   const { theme } = useTheme();
 
   // Normalise backend & old‑mock fields
+  let rawImage = shop.image || (shop as any).shop_image;
+  if (rawImage && !rawImage.startsWith('http')) {
+    // Ensure we don't double slash if rawImage starts with /
+    // but SERVER_URL does not end with / (it is http://...:5000)
+    rawImage = `${SERVER_URL}${rawImage.startsWith('/') ? '' : '/'}${rawImage}`;
+  }
+
   const imageUri =
-    shop.image ||
-    (shop as any).shop_image ||
-    'https://cdn-icons-png.flaticon.com/512/3536/3536959.png';
+    rawImage || 'https://cdn-icons-png.flaticon.com/512/3536/3536959.png';
 
   const name = shop.name || (shop as any).shop_name || 'Unnamed Shop';
 

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { Product } from '@/types';
+import { SERVER_URL } from '@/services/api';
 
 type Props = {
   product: Product;
@@ -33,8 +34,13 @@ export const ProductCard: React.FC<Props> = memo(
     const { theme } = useTheme();
     const p: any = product;
 
-    const imageUrl: string | undefined =
-      p.product_image || product.image || undefined;
+    let rawImage = p.product_image || product.image;
+    if (rawImage && !rawImage.startsWith('http')) {
+      rawImage = `${SERVER_URL}${
+        rawImage.startsWith('/') ? '' : '/'
+      }${rawImage}`;
+    }
+    const imageUrl: string | undefined = rawImage || undefined;
 
     const unitLabel: string | undefined = useMemo(() => {
       const q = p.quantity;
