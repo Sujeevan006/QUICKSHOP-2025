@@ -10,18 +10,22 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function CategoriesList() {
-  const { token } = useContext(AuthContext);
+  const { token, loading: authLoading } = useContext(AuthContext);
   const theme = useTheme();
   const router = useRouter();
   const [categories, setCategories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadCategories = async () => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const res = await api.get('/categories', {
@@ -37,13 +41,17 @@ export default function CategoriesList() {
 
   useFocusEffect(
     useCallback(() => {
-      loadCategories();
-    }, [])
+      if (!authLoading) {
+        loadCategories();
+      }
+    }, [token, authLoading])
   );
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+      <View
+        style={[styles.loadingContainer, { backgroundColor: theme.background }]}
+      >
         <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
@@ -72,7 +80,12 @@ export default function CategoriesList() {
                 },
               ]}
             >
-              <View style={[styles.iconCircle, { backgroundColor: theme.background }]}>
+              <View
+                style={[
+                  styles.iconCircle,
+                  { backgroundColor: theme.background },
+                ]}
+              >
                 <FolderOpen size={20} color={theme.primary} />
               </View>
               <Text style={[styles.categoryName, { color: theme.text }]}>
@@ -84,7 +97,11 @@ export default function CategoriesList() {
         )}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <FolderOpen size={48} color={theme.textSecondary} style={{ marginBottom: 16 }} />
+            <FolderOpen
+              size={48}
+              color={theme.textSecondary}
+              style={{ marginBottom: 16 }}
+            />
             <Text style={[styles.emptyText, { color: theme.text }]}>
               No categories yet
             </Text>

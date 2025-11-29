@@ -1,4 +1,4 @@
-// E:\Axivers\NearBuy Project\shop-backend\middleware\authMiddleware.js
+// E:\Axivers\QUICKSHOP-2025\Backend\middleware\authMiddleware.js
 
 import jwt from 'jsonwebtoken';
 

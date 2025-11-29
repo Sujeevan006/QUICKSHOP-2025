@@ -3,6 +3,7 @@ import { useTheme } from '@/context/ThemeContext';
 import api from '@/services/api';
 import { Picker } from '@react-native-picker/picker';
 import { BlurView } from 'expo-blur';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -108,7 +109,6 @@ export default function AddEditProductModal() {
       quality: 0.8,
       allowsEditing: true,
       aspect: [1, 1],
-      base64: true, // Get base64 as fallback
     });
 
     if (result.canceled) return;
@@ -116,44 +116,54 @@ export default function AddEditProductModal() {
     try {
       setUploading(true);
       const asset = result.assets[0];
-      
+
+      // Resize and compress image
+      const manipulated = await manipulateAsync(
+        asset.uri,
+        [{ resize: { width: 1080 } }], // Resize to max width 1080px
+        { compress: 0.7, format: SaveFormat.JPEG }
+      );
+
       // Try to upload to backend first
       try {
-        // Get file extension from URI or mimeType
-        const uriParts = asset.uri.split('.');
-        const fileExtension = uriParts[uriParts.length - 1];
-        const fileName = asset.fileName || `product_${Date.now()}.${fileExtension}`;
-        
-        // Determine mime type
-        let mimeType = asset.mimeType || 'image/jpeg';
-        if (!mimeType && fileExtension) {
-          const ext = fileExtension.toLowerCase();
-          if (ext === 'png') mimeType = 'image/png';
-          else if (ext === 'jpg' || ext === 'jpeg') mimeType = 'image/jpeg';
-          else if (ext === 'gif') mimeType = 'image/gif';
-          else if (ext === 'webp') mimeType = 'image/webp';
-        }
+        const fileName = `product_${Date.now()}.jpg`;
+        const mimeType = 'image/jpeg';
 
         const formData = new FormData();
         formData.append('image', {
-          uri: Platform.OS === 'ios' ? asset.uri.replace('file://', '') : asset.uri,
+          uri: manipulated.uri,
           name: fileName,
           type: mimeType,
         } as any);
 
-        console.log('Uploading image:', { fileName, mimeType, uri: asset.uri });
+        console.log('Uploading image:', {
+          fileName,
+          mimeType,
+          uri: manipulated.uri,
+        });
 
-        const uploadRes = await api.post('/uploads', formData, {
+        // Use fetch instead of axios for reliable file uploads in React Native
+        const uploadResponse = await fetch(`${api.defaults.baseURL}/uploads`, {
+          method: 'POST',
+          body: formData,
           headers: {
             Authorization: `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data',
+            Accept: 'application/json',
           },
         });
 
-        console.log('Upload successful:', uploadRes.data);
-        
-        if (uploadRes.data && uploadRes.data.url) {
-          setForm((prev) => ({ ...prev, product_image: uploadRes.data.url }));
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text();
+          throw new Error(
+            `Upload failed: ${uploadResponse.status} ${errorText}`
+          );
+        }
+
+        const responseData = await uploadResponse.json();
+        console.log('Upload successful:', responseData);
+
+        if (responseData && responseData.url) {
+          setForm((prev) => ({ ...prev, product_image: responseData.url }));
           Alert.alert('Success', 'Image uploaded successfully!');
         } else {
           throw new Error('No URL returned from server');
@@ -161,16 +171,17 @@ export default function AddEditProductModal() {
       } catch (uploadError: any) {
         // If upload fails, use base64 as fallback
         console.log('Upload endpoint not available, using base64 fallback');
-        
-        if (asset.base64) {
-          const base64Image = `data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}`;
-          setForm((prev) => ({ ...prev, product_image: base64Image }));
-          Alert.alert('Success', 'Image added successfully!');
-        } else {
-          // If no base64, just use the local URI (won't work on backend but allows testing)
-          setForm((prev) => ({ ...prev, product_image: asset.uri }));
-          Alert.alert('Note', 'Image added locally. Upload endpoint not configured on backend.');
-        }
+        console.error(
+          'Detailed upload error:',
+          uploadError.message,
+          uploadError.response?.data
+        );
+
+        setForm((prev) => ({ ...prev, product_image: manipulated.uri }));
+        Alert.alert(
+          'Note',
+          'Image added locally. Upload endpoint not configured on backend.'
+        );
       }
     } catch (e: any) {
       console.error('Image selection error:', e?.message || e);
@@ -188,15 +199,15 @@ export default function AddEditProductModal() {
       );
       return;
     }
-    
+
     try {
       setSaving(true);
-      
+
       // Check if image is base64 and might be too large
       const isBase64Image = form.product_image?.startsWith('data:image');
       const imageSize = form.product_image ? form.product_image.length : 0;
       const isImageTooLarge = imageSize > 500000; // 500KB limit for base64
-      
+
       // Prepare payload
       let payload: any = {
         name: form.name,
@@ -214,10 +225,14 @@ export default function AddEditProductModal() {
         console.warn('Image too large for database, saving without image');
       }
 
-      console.log('Saving product:', { 
-        ...payload, 
-        product_image: payload.product_image ? (isBase64Image ? 'BASE64_IMAGE' : 'URL') : 'NONE',
-        imageSize: imageSize > 0 ? `${Math.round(imageSize / 1024)}KB` : '0KB'
+      console.log('Saving product:', {
+        ...payload,
+        product_image: payload.product_image
+          ? isBase64Image
+            ? 'BASE64_IMAGE'
+            : 'URL'
+          : 'NONE',
+        imageSize: imageSize > 0 ? `${Math.round(imageSize / 1024)}KB` : '0KB',
       });
 
       try {
@@ -235,9 +250,12 @@ export default function AddEditProductModal() {
         router.back();
       } catch (saveError: any) {
         // If insert failed with image, try without image
-        if (saveError?.response?.data?.message?.includes('Insert failed') && payload.product_image) {
+        if (
+          saveError?.response?.data?.message?.includes('Insert failed') &&
+          payload.product_image
+        ) {
           console.log('Insert failed with image, retrying without image...');
-          
+
           Alert.alert(
             'Image Too Large',
             'The image is too large for the database. Save product without image?',
@@ -250,7 +268,7 @@ export default function AddEditProductModal() {
                     setSaving(true);
                     const payloadWithoutImage = { ...payload };
                     delete payloadWithoutImage.product_image;
-                    
+
                     if (isEdit) {
                       await api.put(`/products/${id}`, payloadWithoutImage, {
                         headers: { Authorization: `Bearer ${token}` },
@@ -263,8 +281,14 @@ export default function AddEditProductModal() {
                     Alert.alert('Success', 'Product saved without image!');
                     router.back();
                   } catch (retryError: any) {
-                    console.error('Retry failed:', retryError?.response?.data || retryError?.message);
-                    Alert.alert('Error', 'Failed to save product even without image.');
+                    console.error(
+                      'Retry failed:',
+                      retryError?.response?.data || retryError?.message
+                    );
+                    Alert.alert(
+                      'Error',
+                      'Failed to save product even without image.'
+                    );
                   } finally {
                     setSaving(false);
                   }
@@ -277,23 +301,30 @@ export default function AddEditProductModal() {
         throw saveError; // Re-throw if it's a different error
       }
     } catch (e: any) {
-      console.error('Product save error:', e?.response?.data || e?.message || e);
-      
-      let errorMessage = isEdit ? 'Failed to update product.' : 'Failed to add product.';
-      
+      console.error(
+        'Product save error:',
+        e?.response?.data || e?.message || e
+      );
+
+      let errorMessage = isEdit
+        ? 'Failed to update product.'
+        : 'Failed to add product.';
+
       if (e?.response?.data?.message) {
         errorMessage = e.response.data.message;
-        
+
         // Add helpful context for common errors
         if (errorMessage.includes('Insert failed')) {
-          errorMessage += '\n\nThis might be due to:\n• Image file too large\n• Database field size limits\n• Missing required fields';
+          errorMessage +=
+            '\n\nThis might be due to:\n• Image file too large\n• Database field size limits\n• Missing required fields';
         }
       } else if (e?.response?.status === 500) {
-        errorMessage = 'Server error. The image might be too large for the database.';
+        errorMessage =
+          'Server error. The image might be too large for the database.';
       } else if (e?.message) {
         errorMessage = e.message;
       }
-      
+
       Alert.alert('Error', errorMessage);
     } finally {
       setSaving(false);
@@ -371,12 +402,17 @@ export default function AddEditProductModal() {
                       resizeMode="cover"
                     />
                     <TouchableOpacity
-                      style={[styles.changeImageBtn, { backgroundColor: colors.surface }]}
+                      style={[
+                        styles.changeImageBtn,
+                        { backgroundColor: colors.surface },
+                      ]}
                       onPress={pickImage}
                       disabled={uploading}
                     >
                       <Camera size={16} color={colors.text} />
-                      <Text style={[styles.changeImageText, { color: colors.text }]}>
+                      <Text
+                        style={[styles.changeImageText, { color: colors.text }]}
+                      >
                         {uploading ? 'Uploading...' : 'Change'}
                       </Text>
                     </TouchableOpacity>
@@ -398,7 +434,12 @@ export default function AddEditProductModal() {
                     ) : (
                       <>
                         <ImageIcon size={40} color={colors.textSecondary} />
-                        <Text style={[styles.uploadText, { color: colors.textSecondary }]}>
+                        <Text
+                          style={[
+                            styles.uploadText,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
                           Tap to upload image
                         </Text>
                       </>

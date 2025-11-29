@@ -11,18 +11,22 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function OffersList() {
-  const { token } = useContext(AuthContext);
+  const { token, loading: authLoading } = useContext(AuthContext);
   const theme = useTheme();
   const router = useRouter();
   const [offers, setOffers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadOffers = async () => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const res = await api.get('/offers', {
@@ -38,13 +42,17 @@ export default function OffersList() {
 
   useFocusEffect(
     useCallback(() => {
-      loadOffers();
-    }, [])
+      if (!authLoading) {
+        loadOffers();
+      }
+    }, [token, authLoading])
   );
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
-      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+      <View
+        style={[styles.loadingContainer, { backgroundColor: theme.background }]}
+      >
         <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
@@ -80,13 +88,25 @@ export default function OffersList() {
               />
               <View style={styles.overlay}>
                 <View style={styles.offerDetails}>
-                  <View style={[styles.tagBadge, { backgroundColor: theme.primary }]}>
+                  <View
+                    style={[
+                      styles.tagBadge,
+                      { backgroundColor: theme.primary },
+                    ]}
+                  >
                     <Tag size={14} color="#fff" />
                   </View>
-                  <Text style={[styles.offerTitle, { color: '#fff' }]} numberOfLines={2}>
+                  <Text
+                    style={[styles.offerTitle, { color: '#fff' }]}
+                    numberOfLines={2}
+                  >
                     {item.title}
                   </Text>
-                  <ChevronRight size={20} color="#fff" style={{ marginLeft: 'auto' }} />
+                  <ChevronRight
+                    size={20}
+                    color="#fff"
+                    style={{ marginLeft: 'auto' }}
+                  />
                 </View>
               </View>
             </Pressable>
@@ -94,7 +114,11 @@ export default function OffersList() {
         )}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Tag size={48} color={theme.textSecondary} style={{ marginBottom: 16 }} />
+            <Tag
+              size={48}
+              color={theme.textSecondary}
+              style={{ marginBottom: 16 }}
+            />
             <Text style={[styles.emptyText, { color: theme.text }]}>
               No offers yet
             </Text>

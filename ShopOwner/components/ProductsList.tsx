@@ -11,18 +11,22 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 export default function ProductsList() {
-  const { token } = useContext(AuthContext);
+  const { token, loading: authLoading } = useContext(AuthContext);
   const theme = useTheme();
   const router = useRouter();
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadProducts = async () => {
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const res = await api.get('/products', {
@@ -38,13 +42,17 @@ export default function ProductsList() {
 
   useFocusEffect(
     useCallback(() => {
-      loadProducts();
-    }, [])
+      if (!authLoading) {
+        loadProducts();
+      }
+    }, [token, authLoading])
   );
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
-      <View style={[styles.centerContainer, { backgroundColor: theme.background }]}>
+      <View
+        style={[styles.centerContainer, { backgroundColor: theme.background }]}
+      >
         <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
@@ -68,10 +76,10 @@ export default function ProductsList() {
               }
               style={({ pressed }) => [
                 styles.card,
-                { 
-                  backgroundColor: theme.surface, 
+                {
+                  backgroundColor: theme.surface,
                   borderColor: theme.border,
-                  transform: [{ scale: pressed ? 0.98 : 1 }]
+                  transform: [{ scale: pressed ? 0.98 : 1 }],
                 },
               ]}
             >
@@ -91,17 +99,27 @@ export default function ProductsList() {
                 </View>
               )}
               <View style={styles.detailsContainer}>
-                <Text style={[styles.name, { color: theme.text }]} numberOfLines={1}>
+                <Text
+                  style={[styles.name, { color: theme.text }]}
+                  numberOfLines={1}
+                >
                   {item.name}
                 </Text>
                 <Text style={[styles.price, { color: theme.primary }]}>
                   Rs. {item.price}
                 </Text>
                 <View style={styles.stockContainer}>
-                  <Text style={[styles.stockLabel, { color: theme.textSecondary }]}>
+                  <Text
+                    style={[styles.stockLabel, { color: theme.textSecondary }]}
+                  >
                     Stock:
                   </Text>
-                  <Text style={[styles.stockValue, { color: item.stock > 0 ? theme.text : '#EF4444' }]}>
+                  <Text
+                    style={[
+                      styles.stockValue,
+                      { color: item.stock > 0 ? theme.text : '#EF4444' },
+                    ]}
+                  >
                     {item.stock}
                   </Text>
                 </View>
@@ -111,7 +129,11 @@ export default function ProductsList() {
         )}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Package size={48} color={theme.textSecondary} style={{ marginBottom: 12 }} />
+            <Package
+              size={48}
+              color={theme.textSecondary}
+              style={{ marginBottom: 12 }}
+            />
             <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
               No products found.
             </Text>
@@ -139,7 +161,7 @@ const styles = StyleSheet.create({
   emptyContainer: { alignItems: 'center', marginTop: 60 },
   emptyText: { fontSize: 18, fontWeight: '600' },
   emptySubText: { fontSize: 14, marginTop: 4 },
-  
+
   fab: {
     position: 'absolute',
     bottom: 24,
@@ -157,7 +179,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   fabText: { color: '#fff', fontWeight: '700', marginLeft: 8, fontSize: 16 },
-  
+
   card: {
     borderWidth: 1,
     borderRadius: 16,

@@ -3,7 +3,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import os from 'os';
+
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
@@ -52,7 +52,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/shops', shopRoutes);
+app.use('/uploads', uploadRoutes); // Allow POST /uploads
 app.use('/api/upload', uploadRoutes);
+app.use('/api/uploads', uploadRoutes); // Allow POST /api/uploads
 
 // ---- health check ----
 app.get('/', (req, res) => res.send('Shop Backend API Running ✅'));
@@ -72,17 +74,7 @@ app.use((err, req, res, _next) => {
 const PORT = process.env.PORT || 5000;
 
 // find LAN IPv4 to display helpful info
-const networks = os.networkInterfaces();
-let lanIP = 'localhost';
-Object.values(networks).forEach((ifs) => {
-  if (Array.isArray(ifs)) {
-    ifs.forEach((iface) => {
-      if (iface.family === 'IPv4' && !iface.internal) {
-        lanIP = iface.address;
-      }
-    });
-  }
-});
+const lanIP = '10.207.31.200';
 
 app.listen(PORT, () => {
   console.log(`\n✅  Shop Backend API is live`);
