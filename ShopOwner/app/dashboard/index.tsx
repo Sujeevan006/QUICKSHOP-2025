@@ -119,7 +119,7 @@ export default function DashboardScreen() {
   };
 
   const handleOfferPress = () => {
-    router.push('/offers');
+    router.push('/products?tab=offers');
   };
 
   return (
@@ -128,7 +128,7 @@ export default function DashboardScreen() {
       contentContainerStyle={{ paddingBottom: 100 }}
       showsVerticalScrollIndicator={false}
     >
-      <Animated.View 
+      <Animated.View
         entering={FadeInDown.delay(100).duration(600)}
         style={styles.header}
       >
@@ -140,14 +140,19 @@ export default function DashboardScreen() {
             {user?.name || 'Shop Owner'}
           </Text>
         </View>
-        <View style={[styles.shopBadge, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+        <View
+          style={[
+            styles.shopBadge,
+            { backgroundColor: theme.surface, borderColor: theme.border },
+          ]}
+        >
           <Text style={[styles.shopName, { color: theme.primary }]}>
             {shop?.shop_name || 'My Shop'}
           </Text>
         </View>
       </Animated.View>
 
-      <Animated.View 
+      <Animated.View
         entering={FadeInDown.delay(200).duration(600)}
         style={styles.sliderContainer}
       >
@@ -155,13 +160,20 @@ export default function DashboardScreen() {
           <Text style={[styles.sectionTitle, { color: theme.text }]}>
             Active Offers
           </Text>
-          <TouchableOpacity onPress={() => router.push('/offers')}>
-            <Text style={[styles.seeAllText, { color: theme.primary }]}>See All</Text>
+          <TouchableOpacity onPress={() => router.push('/products?tab=offers')}>
+            <Text style={[styles.seeAllText, { color: theme.primary }]}>
+              See All
+            </Text>
           </TouchableOpacity>
         </View>
 
         {loadingOffers ? (
-          <View style={[styles.loadingContainer, { backgroundColor: theme.surface }]}>
+          <View
+            style={[
+              styles.loadingContainer,
+              { backgroundColor: theme.surface },
+            ]}
+          >
             <ActivityIndicator size="small" color={theme.primary} />
           </View>
         ) : sliderData.length > 0 ? (
@@ -187,14 +199,18 @@ export default function DashboardScreen() {
                   onPress={handleOfferPress}
                   style={styles.slideWrapper}
                 >
-                  <View style={[styles.slide, { backgroundColor: theme.surface }]}>
+                  <View
+                    style={[styles.slide, { backgroundColor: theme.surface }]}
+                  >
                     <Image
                       source={{ uri: item.banner_image_url }}
                       style={styles.bannerImage}
                       resizeMode="cover"
                     />
                     <View style={styles.overlay}>
-                      <Text style={styles.slideTitle} numberOfLines={2}>{item.title}</Text>
+                      <Text style={styles.slideTitle} numberOfLines={2}>
+                        {item.title}
+                      </Text>
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -211,16 +227,38 @@ export default function DashboardScreen() {
                       : activeIndex === offers.length + 1
                       ? 0
                       : activeIndex - 1;
+                  return (
+                    <View
+                      key={index}
+                      style={[
+                        styles.dot,
+                        {
+                          width: index === activeDotIndex ? 24 : 8,
+                          backgroundColor:
+                            index === activeDotIndex
+                              ? theme.primary
+                              : theme.border,
+                        },
+                      ]}
+                    />
+                  );
                 })}
               </View>
             )}
           </>
         ) : (
-          <TouchableOpacity 
-            onPress={() => router.push('/offers')}
-            style={[styles.emptyState, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          <TouchableOpacity
+            onPress={() => router.push('/products?tab=offers')}
+            style={[
+              styles.emptyState,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}
           >
-            <Tag size={32} color={theme.textSecondary} style={{ marginBottom: 8 }} />
+            <Tag
+              size={32}
+              color={theme.textSecondary}
+              style={{ marginBottom: 8 }}
+            />
             <Text style={[styles.noOffersText, { color: theme.textSecondary }]}>
               No active offers. Tap to create one!
             </Text>
@@ -229,7 +267,12 @@ export default function DashboardScreen() {
       </Animated.View>
 
       <View style={styles.menuGrid}>
-        <Text style={[styles.sectionTitle, { color: theme.text, paddingHorizontal: 16, marginBottom: 16 }]}>
+        <Text
+          style={[
+            styles.sectionTitle,
+            { color: theme.text, paddingHorizontal: 16, marginBottom: 16 },
+          ]}
+        >
           Quick Actions
         </Text>
         <View style={styles.gridContainer}>
@@ -252,36 +295,41 @@ export default function DashboardScreen() {
             theme={theme}
           />
           <DashboardButton
-            label="Offers"
-            subLabel="Boost sales"
-            icon={<Tag size={24} color="#FFF" />}
-            color="#EC4899"
-            delay={500}
-            onPress={() => router.push('/offers')}
-            theme={theme}
-          />
-          <DashboardButton
             label="Settings"
             subLabel="App preferences"
             icon={<SettingsIcon size={24} color="#FFF" />}
             color="#6366F1"
-            delay={600}
+            delay={500}
             onPress={() => router.push('/settings')}
             theme={theme}
           />
         </View>
-        
-        <Animated.View entering={FadeInUp.delay(700).duration(600)} style={{ paddingHorizontal: 16, marginTop: 8 }}>
+
+        <Animated.View
+          entering={FadeInUp.delay(700).duration(600)}
+          style={{ paddingHorizontal: 16, marginTop: 8 }}
+        >
           <TouchableOpacity
             onPress={() => alert('Coming Soon')}
-            style={[styles.fullWidthCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
+            style={[
+              styles.fullWidthCard,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}
           >
-            <View style={[styles.iconCircle, { backgroundColor: theme.background }]}>
+            <View
+              style={[styles.iconCircle, { backgroundColor: theme.background }]}
+            >
               <Layers size={20} color={theme.text} />
             </View>
             <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={[styles.cardLabel, { color: theme.text }]}>Manage Shop Details</Text>
-              <Text style={[styles.cardSubLabel, { color: theme.textSecondary }]}>Update address, hours, and more</Text>
+              <Text style={[styles.cardLabel, { color: theme.text }]}>
+                Manage Shop Details
+              </Text>
+              <Text
+                style={[styles.cardSubLabel, { color: theme.textSecondary }]}
+              >
+                Update address, hours, and more
+              </Text>
             </View>
             <ChevronRight size={20} color={theme.textSecondary} />
           </TouchableOpacity>
@@ -309,7 +357,7 @@ function DashboardButton({
   theme: any;
 }) {
   return (
-    <Animated.View 
+    <Animated.View
       entering={FadeInUp.delay(delay).duration(600)}
       style={styles.gridItem}
     >
@@ -317,10 +365,10 @@ function DashboardButton({
         onPress={onPress}
         style={({ pressed }) => [
           styles.card,
-          { 
-            backgroundColor: theme.surface, 
+          {
+            backgroundColor: theme.surface,
             borderColor: theme.border,
-            transform: [{ scale: pressed ? 0.98 : 1 }]
+            transform: [{ scale: pressed ? 0.98 : 1 }],
           },
         ]}
       >
@@ -328,7 +376,9 @@ function DashboardButton({
           {icon}
         </View>
         <Text style={[styles.cardLabel, { color: theme.text }]}>{label}</Text>
-        <Text style={[styles.cardSubLabel, { color: theme.textSecondary }]}>{subLabel}</Text>
+        <Text style={[styles.cardSubLabel, { color: theme.textSecondary }]}>
+          {subLabel}
+        </Text>
       </Pressable>
     </Animated.View>
   );
@@ -336,9 +386,9 @@ function DashboardButton({
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { 
-    paddingHorizontal: 20, 
-    paddingTop: 20, 
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
     paddingBottom: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',

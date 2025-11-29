@@ -1,11 +1,17 @@
 import { AuthContext } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import api from '@/services/api';
-import { BlurView } from 'expo-blur';
 import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import * as ImagePicker from 'expo-image-picker';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { Camera, FileText, Save, Tag, Trash2, X } from 'lucide-react-native';
+import {
+  ArrowLeft,
+  Camera,
+  FileText,
+  Save,
+  Tag,
+  Trash2,
+} from 'lucide-react-native';
 import React, { useContext, useState } from 'react';
 import {
   ActivityIndicator,
@@ -20,6 +26,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const defaultState = {
   title: '',
@@ -27,7 +34,7 @@ const defaultState = {
   bannerUrl: '',
 };
 
-export default function AddEditOfferModal() {
+export default function AddEditOfferScreen() {
   const { token } = useContext(AuthContext);
   const { colors, themeName } = useTheme();
   const router = useRouter();
@@ -138,21 +145,30 @@ export default function AddEditOfferModal() {
     try {
       setSaving(true);
       const payload = { title, description, banner_image_url: bannerUrl };
+
+      console.log('Submitting offer:', { isEdit, id, payload });
+
       if (isEdit) {
         await api.put(`/offers/${id}`, payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        Alert.alert('Success', 'Offer updated successfully');
       } else {
         await api.post('/offers', payload, {
           headers: { Authorization: `Bearer ${token}` },
         });
+        Alert.alert('Success', 'Offer created successfully');
       }
       router.back();
-    } catch (e) {
+    } catch (e: any) {
       console.error('Save offer error:', e);
+      const errorMessage =
+        e.response?.data?.message || e.message || 'Unknown error';
       Alert.alert(
         'Error',
-        isEdit ? 'Failed to update offer.' : 'Failed to create offer.'
+        isEdit
+          ? `Failed to update offer: ${errorMessage}`
+          : `Failed to create offer: ${errorMessage}`
       );
     } finally {
       setSaving(false);
@@ -180,273 +196,219 @@ export default function AddEditOfferModal() {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Blur the background content (the list behind the modal) */}
-      <BlurView
-        intensity={20}
-        tint={themeName === 'dark' ? 'dark' : 'light'}
-        style={StyleSheet.absoluteFill}
-      />
-
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      edges={['top', 'left', 'right']}
+    >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.modalOverlay}
+        style={{ flex: 1 }}
       >
-        <TouchableOpacity
-          style={StyleSheet.absoluteFill}
-          onPress={router.back}
-          activeOpacity={1}
-        />
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
+          <TouchableOpacity
+            onPress={router.back}
+            style={[styles.backButton, { backgroundColor: colors.surface }]}
+          >
+            <ArrowLeft size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {isEdit ? 'Edit Offer' : 'New Offer'}
+          </Text>
+          <View style={{ width: 40 }} />
+        </View>
 
-        <View
-          style={[
-            styles.modalContainer,
-            {
-              maxHeight: '85%',
-              backgroundColor:
-                themeName === 'dark'
-                  ? 'rgba(30,30,30,0.85)'
-                  : 'rgba(255,255,255,0.85)',
-              borderColor: colors.border,
-            },
-          ]}
-          onStartShouldSetResponder={() => true}
-        >
-          {/* Inner blur for the glass card effect */}
-          <BlurView
-            intensity={40}
-            tint={themeName}
-            style={StyleSheet.absoluteFill}
-          />
-
-          <View style={[styles.header, { borderBottomColor: colors.border }]}>
-            <Text style={[styles.headerTitle, { color: colors.text }]}>
-              {isEdit ? 'Edit Offer' : 'New Offer'}
-            </Text>
-            <TouchableOpacity
-              onPress={router.back}
-              style={[styles.closeButton, { backgroundColor: colors.surface }]}
-            >
-              <X size={20} color={colors.text} />
-            </TouchableOpacity>
+        {loadingInitial ? (
+          <View
+            style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+          >
+            <ActivityIndicator size="large" color={colors.primary} />
           </View>
-
-          {loadingInitial ? (
-            <View
-              style={{
-                flex: 1,
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
+        ) : (
+          <>
+            <ScrollView
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
             >
-              <ActivityIndicator size="large" color={colors.primary} />
-            </View>
-          ) : (
-            <>
-              <ScrollView
-                contentContainerStyle={styles.scrollContent}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-              >
-                <View style={styles.imageContainer}>
-                  {bannerUrl ? (
-                    <View style={styles.imageWrapper}>
-                      <Image
-                        source={{ uri: bannerUrl }}
-                        style={styles.imagePreview}
-                        resizeMode="cover"
-                      />
-                      <TouchableOpacity
-                        style={[
-                          styles.editImageBtn,
-                          { backgroundColor: colors.surface },
-                        ]}
-                        onPress={pickAndUploadImage}
-                        disabled={uploading}
-                      >
-                        <Camera size={16} color={colors.text} />
-                      </TouchableOpacity>
-                    </View>
-                  ) : (
+              <View style={styles.imageContainer}>
+                {bannerUrl ? (
+                  <View style={styles.imageWrapper}>
+                    <Image
+                      source={{ uri: bannerUrl }}
+                      style={styles.imagePreview}
+                      resizeMode="cover"
+                    />
                     <TouchableOpacity
                       style={[
-                        styles.imagePlaceholder,
-                        {
-                          backgroundColor: colors.surface,
-                          borderColor: colors.border,
-                        },
+                        styles.editImageBtn,
+                        { backgroundColor: colors.surface },
                       ]}
                       onPress={pickAndUploadImage}
                       disabled={uploading}
                     >
-                      {uploading ? (
-                        <ActivityIndicator color={colors.primary} />
-                      ) : (
-                        <>
-                          <Camera color={colors.textSecondary} size={40} />
-                          <Text
-                            style={[
-                              styles.uploadText,
-                              { color: colors.textSecondary },
-                            ]}
-                          >
-                            Upload Banner Image
-                          </Text>
-                        </>
-                      )}
+                      <Camera size={16} color={colors.text} />
                     </TouchableOpacity>
-                  )}
-                </View>
-
-                <View style={styles.formGroup}>
-                  <Text style={[styles.label, { color: colors.textSecondary }]}>
-                    Offer Title
-                  </Text>
-                  <View
-                    style={[
-                      styles.inputWrapper,
-                      {
-                        backgroundColor: colors.surface,
-                        borderColor: colors.border,
-                      },
-                    ]}
-                  >
-                    <Tag
-                      color={colors.textSecondary}
-                      size={18}
-                      style={styles.icon}
-                    />
-                    <TextInput
-                      style={[styles.input, { color: colors.text }]}
-                      placeholder="e.g. Summer Sale 50% Off"
-                      placeholderTextColor={colors.textSecondary}
-                      value={title}
-                      onChangeText={setTitle}
-                    />
                   </View>
-                </View>
-
-                <View style={styles.formGroup}>
-                  <Text style={[styles.label, { color: colors.textSecondary }]}>
-                    Description
-                  </Text>
-                  <View
-                    style={[
-                      styles.inputWrapper,
-                      {
-                        backgroundColor: colors.surface,
-                        borderColor: colors.border,
-                        alignItems: 'flex-start',
-                        paddingVertical: 12,
-                      },
-                    ]}
-                  >
-                    <FileText
-                      color={colors.textSecondary}
-                      size={18}
-                      style={[styles.icon, { marginTop: 4 }]}
-                    />
-                    <TextInput
-                      style={[
-                        styles.input,
-                        {
-                          height: 80,
-                          textAlignVertical: 'top',
-                          color: colors.text,
-                        },
-                      ]}
-                      placeholder="Add details about this offer..."
-                      placeholderTextColor={colors.textSecondary}
-                      value={description}
-                      onChangeText={setDescription}
-                      multiline
-                    />
-                  </View>
-                </View>
-              </ScrollView>
-
-              <View
-                style={[
-                  styles.footer,
-                  {
-                    borderTopColor: colors.border,
-                    backgroundColor: 'transparent',
-                  },
-                ]}
-              >
-                <TouchableOpacity
-                  style={[
-                    styles.actionBtn,
-                    styles.saveBtn,
-                    {
-                      backgroundColor: colors.primary,
-                      opacity: saving ? 0.7 : 1,
-                    },
-                  ]}
-                  onPress={handleSubmit}
-                  disabled={saving || uploading}
-                >
-                  <Save size={18} color="#fff" />
-                  <Text style={styles.btnText}>
-                    {saving
-                      ? 'Saving...'
-                      : isEdit
-                      ? 'Update Offer'
-                      : 'Create Offer'}
-                  </Text>
-                </TouchableOpacity>
-
-                {isEdit && (
+                ) : (
                   <TouchableOpacity
-                    style={[styles.actionBtn, styles.deleteBtn]}
-                    onPress={handleDelete}
-                    disabled={saving}
+                    style={[
+                      styles.imagePlaceholder,
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                    onPress={pickAndUploadImage}
+                    disabled={uploading}
                   >
-                    <Trash2 size={18} color="#fff" />
+                    {uploading ? (
+                      <ActivityIndicator color={colors.primary} />
+                    ) : (
+                      <>
+                        <Camera color={colors.textSecondary} size={40} />
+                        <Text
+                          style={[
+                            styles.uploadText,
+                            { color: colors.textSecondary },
+                          ]}
+                        >
+                          Upload Banner Image
+                        </Text>
+                      </>
+                    )}
                   </TouchableOpacity>
                 )}
               </View>
-            </>
-          )}
-        </View>
+
+              <View style={styles.formGroup}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  Offer Title
+                </Text>
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <Tag
+                    color={colors.textSecondary}
+                    size={18}
+                    style={styles.icon}
+                  />
+                  <TextInput
+                    style={[styles.input, { color: colors.text }]}
+                    placeholder="e.g. Summer Sale 50% Off"
+                    placeholderTextColor={colors.textSecondary}
+                    value={title}
+                    onChangeText={setTitle}
+                  />
+                </View>
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={[styles.label, { color: colors.textSecondary }]}>
+                  Description
+                </Text>
+                <View
+                  style={[
+                    styles.inputWrapper,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                      alignItems: 'flex-start',
+                      paddingVertical: 12,
+                    },
+                  ]}
+                >
+                  <FileText
+                    color={colors.textSecondary}
+                    size={18}
+                    style={[styles.icon, { marginTop: 4 }]}
+                  />
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        height: 80,
+                        textAlignVertical: 'top',
+                        color: colors.text,
+                      },
+                    ]}
+                    placeholder="Add details about this offer..."
+                    placeholderTextColor={colors.textSecondary}
+                    value={description}
+                    onChangeText={setDescription}
+                    multiline
+                  />
+                </View>
+              </View>
+            </ScrollView>
+
+            <View
+              style={[
+                styles.footer,
+                {
+                  borderTopColor: colors.border,
+                  backgroundColor: colors.background,
+                },
+              ]}
+            >
+              <TouchableOpacity
+                style={[
+                  styles.actionBtn,
+                  styles.saveBtn,
+                  {
+                    backgroundColor: colors.primary,
+                    opacity: saving ? 0.7 : 1,
+                  },
+                ]}
+                onPress={handleSubmit}
+                disabled={saving || uploading}
+              >
+                <Save size={18} color="#fff" />
+                <Text style={styles.btnText}>
+                  {saving
+                    ? 'Saving...'
+                    : isEdit
+                    ? 'Update Offer'
+                    : 'Create Offer'}
+                </Text>
+              </TouchableOpacity>
+
+              {isEdit && (
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.deleteBtn]}
+                  onPress={handleDelete}
+                  disabled={saving}
+                >
+                  <Trash2 size={18} color="#fff" />
+                </TouchableOpacity>
+              )}
+            </View>
+          </>
+        )}
       </KeyboardAvoidingView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.3)', // Lighter overlay since we have blur
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-  },
-  modalContainer: {
-    width: '100%',
-    borderRadius: 24,
-    overflow: 'hidden',
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
   },
-  headerTitle: { fontSize: 20, fontWeight: '700' },
-  closeButton: {
+  headerTitle: { fontSize: 18, fontWeight: '700' },
+  backButton: {
     padding: 8,
     borderRadius: 20,
   },
@@ -454,7 +416,7 @@ const styles = StyleSheet.create({
   imageContainer: { alignItems: 'center', marginBottom: 24 },
   imageWrapper: {
     width: '100%',
-    height: 180,
+    height: 200,
     borderRadius: 16,
     overflow: 'hidden',
     position: 'relative',
@@ -472,7 +434,7 @@ const styles = StyleSheet.create({
   },
   imagePlaceholder: {
     width: '100%',
-    height: 160,
+    height: 180,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
