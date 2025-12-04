@@ -128,12 +128,17 @@ export default function PrebillShopDetailScreen() {
             const price = Number(item.product.price) || 0;
             const subtotal = price * item.quantity;
 
-            const imageUrl = item.product.image
-              ? item.product.image.startsWith('http')
-                ? item.product.image
-                : `${SERVER_URL}${
-                    item.product.image.startsWith('/') ? '' : '/'
-                  }${item.product.image}`
+            const rawImage =
+              (item.product as any).product_image || item.product.image;
+            const imageUrl = rawImage
+              ? rawImage.startsWith('http')
+                ? rawImage
+                : (() => {
+                    const cleanPath = rawImage.replace(/\\/g, '/');
+                    return `${SERVER_URL}${
+                      cleanPath.startsWith('/') ? '' : '/'
+                    }${cleanPath}`;
+                  })()
               : null;
 
             return (

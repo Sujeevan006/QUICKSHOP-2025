@@ -108,8 +108,7 @@ export default function PrebillSummaryScreen() {
       const sid = String(
         item.product.shopId || item.product.shop_id || 'unknown'
       );
-      const price =
-        typeof item.product.price === 'number' ? item.product.price : 0;
+      const price = Number(item.product.price) || 0;
       if (!byShop[sid]) byShop[sid] = { count: 0, total: 0 };
       byShop[sid].count += 1;
       byShop[sid].total += item.quantity * price;
@@ -138,6 +137,20 @@ export default function PrebillSummaryScreen() {
             category: 'Unknown',
             image: null,
           };
+        }
+
+        // Ensure image is absolute
+        const rawShopImage = (shop as any).shop_image || shop.image;
+        if (rawShopImage && !rawShopImage.startsWith('http')) {
+          const cleanPath = rawShopImage.replace(/\\/g, '/');
+          shop = {
+            ...shop,
+            image: `${SERVER_URL}${
+              cleanPath.startsWith('/') ? '' : '/'
+            }${cleanPath}`,
+          };
+        } else if (rawShopImage) {
+          shop = { ...shop, image: rawShopImage };
         }
 
         return { shopId, shop, count: info.count, total: info.total };

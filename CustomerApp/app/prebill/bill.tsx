@@ -44,13 +44,18 @@ export default function PrebillBillScreen() {
             name: found.shop_name || found.name,
             address: found.shop_address || found.address,
             category: found.shop_category || found.category,
-            image: found.image
-              ? found.image.startsWith('http')
-                ? found.image
-                : `${SERVER_URL}${found.image.startsWith('/') ? '' : '/'}${
-                    found.image
-                  }`
-              : null,
+            image:
+              (found as any).shop_image || found.image
+                ? ((found as any).shop_image || found.image).startsWith('http')
+                  ? (found as any).shop_image || found.image
+                  : (() => {
+                      const raw = (found as any).shop_image || found.image;
+                      const cleanPath = raw.replace(/\\/g, '/');
+                      return `${SERVER_URL}${
+                        cleanPath.startsWith('/') ? '' : '/'
+                      }${cleanPath}`;
+                    })()
+                : null,
             isOpen: found.is_open,
             rating: found.rating,
           });
