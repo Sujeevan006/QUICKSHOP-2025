@@ -105,31 +105,53 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
   useEffect(() => {
     (async () => {
       try {
-        const [
-          storedUser,
-          storedFavoriteShops,
-          storedFavoriteProducts,
-          storedShoppingList,
-          storedSettings,
-          storedPackingStatus,
-        ] = await Promise.all([
-          AsyncStorage.getItem(STORAGE_KEYS.user),
-          AsyncStorage.getItem(STORAGE_KEYS.favoriteShops),
-          AsyncStorage.getItem(STORAGE_KEYS.favoriteProducts),
-          AsyncStorage.getItem(STORAGE_KEYS.shoppingList),
-          AsyncStorage.getItem(STORAGE_KEYS.settings),
-          AsyncStorage.getItem(STORAGE_KEYS.packingStatus),
-        ]);
+        // Check if we've cleaned up old mock data
+        const cleanupDone = await AsyncStorage.getItem('mock_data_cleanup_v1');
 
-        if (storedUser) setUser(JSON.parse(storedUser));
-        if (storedFavoriteShops)
-          setFavoriteShops(JSON.parse(storedFavoriteShops));
-        if (storedFavoriteProducts)
-          setFavoriteProducts(JSON.parse(storedFavoriteProducts));
-        if (storedShoppingList) setShoppingList(JSON.parse(storedShoppingList));
-        if (storedSettings) setSettings(JSON.parse(storedSettings));
-        if (storedPackingStatus)
-          setPackingStatus(JSON.parse(storedPackingStatus));
+        if (!cleanupDone) {
+          // Clear stale data
+          await AsyncStorage.removeItem(STORAGE_KEYS.shoppingList);
+          await AsyncStorage.removeItem(STORAGE_KEYS.favoriteShops);
+          await AsyncStorage.setItem('mock_data_cleanup_v1', 'true');
+          console.log('Cleaned up stale mock data');
+
+          // Load only user and settings
+          const [storedUser, storedSettings] = await Promise.all([
+            AsyncStorage.getItem(STORAGE_KEYS.user),
+            AsyncStorage.getItem(STORAGE_KEYS.settings),
+          ]);
+
+          if (storedUser) setUser(JSON.parse(storedUser));
+          if (storedSettings) setSettings(JSON.parse(storedSettings));
+        } else {
+          // Normal load
+          const [
+            storedUser,
+            storedFavoriteShops,
+            storedFavoriteProducts,
+            storedShoppingList,
+            storedSettings,
+            storedPackingStatus,
+          ] = await Promise.all([
+            AsyncStorage.getItem(STORAGE_KEYS.user),
+            AsyncStorage.getItem(STORAGE_KEYS.favoriteShops),
+            AsyncStorage.getItem(STORAGE_KEYS.favoriteProducts),
+            AsyncStorage.getItem(STORAGE_KEYS.shoppingList),
+            AsyncStorage.getItem(STORAGE_KEYS.settings),
+            AsyncStorage.getItem(STORAGE_KEYS.packingStatus),
+          ]);
+
+          if (storedUser) setUser(JSON.parse(storedUser));
+          if (storedFavoriteShops)
+            setFavoriteShops(JSON.parse(storedFavoriteShops));
+          if (storedFavoriteProducts)
+            setFavoriteProducts(JSON.parse(storedFavoriteProducts));
+          if (storedShoppingList)
+            setShoppingList(JSON.parse(storedShoppingList));
+          if (storedSettings) setSettings(JSON.parse(storedSettings));
+          if (storedPackingStatus)
+            setPackingStatus(JSON.parse(storedPackingStatus));
+        }
       } catch (error) {
         console.error('Error loading app data:', error);
       }
@@ -218,10 +240,12 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
     if (!quantity || quantity <= 0) return;
 
     setShoppingList((prev) => {
-      const idx = prev.findIndex((i) => i.product.id === product.id);
+      const idx = prev.findIndex(
+        (i) => String(i.product.id) === String(product.id)
+      );
       let updated: ShoppingListItem[];
 
-      const price = typeof product.price === 'number' ? product.price : 0;
+      const price = Number(product.price) || 0;
 
       if (idx >= 0) {
         const nextQty = prev[idx].quantity + quantity;
@@ -239,13 +263,15 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const updateShoppingListQuantity = (productId: string, quantity: number) => {
     setShoppingList((prev) => {
-      const price =
-        prev.find((i) => i.product.id === productId)?.product.price ?? 0;
+      const targetItem = prev.find(
+        (i) => String(i.product.id) === String(productId)
+      );
+      const price = Number(targetItem?.product.price) || 0;
 
       const updated = prev
         .map((i) =>
-          i.product.id === productId
-            ? { ...i, quantity, subtotal: Math.max(0, quantity) * (price || 0) }
+          String(i.product.id) === String(productId)
+            ? { ...i, quantity, subtotal: Math.max(0, quantity) * price }
             : i
         )
         .filter((i) => i.quantity > 0);
@@ -257,7 +283,9 @@ export const AppProvider: React.FC<AppProviderProps> = ({ children }) => {
 
   const removeFromShoppingList = (productId: string) => {
     setShoppingList((prev) => {
-      const updated = prev.filter((i) => i.product.id !== productId);
+      const updated = prev.filter(
+        (i) => String(i.product.id) !== String(productId)
+      );
       saveToStorage(STORAGE_KEYS.shoppingList, updated);
       return updated;
     });

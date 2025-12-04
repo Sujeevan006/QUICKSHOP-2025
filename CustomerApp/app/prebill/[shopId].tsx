@@ -4,7 +4,8 @@ import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useApp } from '@/contexts/AppContext';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { mockShops } from '@/utils/mockData';
+import { SERVER_URL } from '@/services/api';
+
 import { Minus, Plus, Trash2 } from 'lucide-react-native';
 import { SwipeListView, RowMap } from 'react-native-swipe-list-view';
 
@@ -15,21 +16,48 @@ export default function PrebillShopDetailScreen() {
     shopId: string;
     mode?: string;
   }>();
-  const { shoppingList, updateShoppingListQuantity, removeFromShoppingList } =
-    useApp();
+  const {
+    shoppingList,
+    updateShoppingListQuantity,
+    removeFromShoppingList,
+    favoriteShops,
+  } = useApp();
 
   const isEditing = mode === 'edit' || mode === '1';
-  const shop = mockShops.find((s) => s.id === shopId);
+
+  let shop = favoriteShops.find((s) => String(s.id) === shopId);
+
+  if (!shop) {
+    const item = shoppingList.find(
+      (i) => String(i.product.shopId || i.product.shop_id) === shopId
+    );
+    if (item) {
+      const p: any = item.product;
+      shop = {
+        id: shopId,
+        name: p.shopName || p.shop_name || `Shop #${shopId}`,
+        address: 'Unknown Address',
+        isOpen: true,
+        rating: 0,
+        offers: [],
+        category: 'Unknown',
+        image: null,
+      };
+    }
+  }
 
   const items = useMemo(
-    () => shoppingList.filter((i) => i.product.shopId === shopId),
+    () =>
+      shoppingList.filter(
+        (i) => String(i.product.shopId || i.product.shop_id) === shopId
+      ),
     [shoppingList, shopId]
   );
 
   const shopTotal = useMemo(
     () =>
       items.reduce((sum, i) => {
-        const price = typeof i.product.price === 'number' ? i.product.price : 0;
+        const price = Number(i.product.price) || 0;
         return sum + i.quantity * price;
       }, 0),
     [items]
@@ -64,50 +92,6 @@ export default function PrebillShopDetailScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       {/* Shop info */}
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          paddingHorizontal: 16,
-          paddingVertical: 12,
-          backgroundColor: theme.surface,
-          borderBottomWidth: 1,
-          borderBottomColor: theme.border,
-        }}
-      >
-        {shop.image ? (
-          <Image
-            source={{ uri: shop.image }}
-            style={{ width: 48, height: 48, borderRadius: 10, marginRight: 12 }}
-          />
-        ) : (
-          <View
-            style={{
-              width: 48,
-              height: 48,
-              borderRadius: 10,
-              marginRight: 12,
-              backgroundColor: theme.border,
-            }}
-          />
-        )}
-        <View style={{ flex: 1 }}>
-          <Text
-            style={{ color: theme.text, fontWeight: '700', fontSize: 16 }}
-            numberOfLines={1}
-          >
-            {shop.name}
-          </Text>
-          {!!shop.address && (
-            <Text
-              style={{ color: theme.textSecondary, fontSize: 12 }}
-              numberOfLines={1}
-            >
-              {shop.address}
-            </Text>
-          )}
-        </View>
-      </View>
 
       {/* Items with slide-to-delete per product */}
       {items.length === 0 ? (
@@ -132,7 +116,7 @@ export default function PrebillShopDetailScreen() {
       ) : (
         <SwipeListView
           data={items}
-          keyExtractor={(i) => i.product.id}
+          keyExtractor={(i) => String(i.product.id)}
           contentContainerStyle={{ paddingVertical: 8 }}
           disableRightSwipe
           stopLeftSwipe={0}
@@ -141,9 +125,16 @@ export default function PrebillShopDetailScreen() {
           tension={40}
           swipeToOpenPercent={10}
           renderItem={({ item }) => {
-            const price =
-              typeof item.product.price === 'number' ? item.product.price : 0;
+            const price = Number(item.product.price) || 0;
             const subtotal = price * item.quantity;
+
+            const imageUrl = item.product.image
+              ? item.product.image.startsWith('http')
+                ? item.product.image
+                : `${SERVER_URL}${
+                    item.product.image.startsWith('/') ? '' : '/'
+                  }${item.product.image}`
+              : null;
 
             return (
               <View
@@ -159,9 +150,9 @@ export default function PrebillShopDetailScreen() {
                   padding: 10,
                 }}
               >
-                {item.product.image ? (
+                {imageUrl ? (
                   <Image
-                    source={{ uri: item.product.image }}
+                    source={{ uri: imageUrl }}
                     style={{
                       width: 56,
                       height: 56,
@@ -209,7 +200,7 @@ export default function PrebillShopDetailScreen() {
                     <TouchableOpacity
                       onPress={() =>
                         updateShoppingListQuantity(
-                          item.product.id,
+                          String(item.product.id),
                           Math.max(0, item.quantity - 1)
                         )
                       }
@@ -242,7 +233,7 @@ export default function PrebillShopDetailScreen() {
                     <TouchableOpacity
                       onPress={() =>
                         updateShoppingListQuantity(
-                          item.product.id,
+                          String(item.product.id),
                           item.quantity + 1
                         )
                       }
@@ -292,8 +283,8 @@ export default function PrebillShopDetailScreen() {
               >
                 <TouchableOpacity
                   onPress={() => {
-                    closeRow(rowMap, item.product.id);
-                    removeFromShoppingList(item.product.id);
+                    closeRow(rowMap, String(item.product.id));
+                    removeFromShoppingList(String(item.product.id));
                   }}
                   activeOpacity={0.9}
                   style={{

@@ -1,12 +1,12 @@
 // app/search.tsx
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useApp } from '@/contexts/AppContext';
 import { SearchBar } from '@/components/common/SearchBar';
 import { ProductCard } from '@/components/cards/ProductCard';
-import { mockProducts, mockShops } from '@/utils/mockData';
+import api, { SERVER_URL } from '@/services/api';
 import Toast from 'react-native-toast-message';
 import {
   Filter as FilterIcon,
@@ -31,56 +31,90 @@ export default function SearchScreen() {
   const [distance, setDistance] = useState<DistanceFilter>('all');
   const [availability, setAvailability] = useState<AvailabilityFilter>('all');
 
-  // Build shop distance map so we can filter products by their shop
-  const shopDistance = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const s of mockShops) {
-      const d = (s as any).distance ?? (s as any).distanceKm;
-      if (typeof d === 'number') map.set(s.id, d);
-    }
-    return map;
-  }, []);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // Filtering
-  const products = useMemo(() => {
-    let list = mockProducts.slice();
+  // Fetch products from backend
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true);
+      try {
+        // Fetch all products or search if API supports it
+        // For now, fetching all and filtering client-side to match previous behavior
+        // In a real app, you might pass query params: api.get('/products', { params: { search: query } })
+        const res = await api.get('/products');
+        let list: Product[] = Array.isArray(res.data) ? res.data : [];
 
-    // search query
-    const q = query.trim().toLowerCase();
-    if (q) {
-      list = list.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          (p.category || '').toLowerCase().includes(q)
-      );
-    }
+        // Map backend fields to frontend Product type if necessary
+        // (Assuming backend returns data matching Product interface or close to it)
+        list = list.map((p: any) => ({
+          ...p,
+          id: String(p.id),
+          shopId: String(p.shop_id || p.shopId),
+          shopName:
+            p.shop_name || p.shopName || (p.shop ? p.shop.name : undefined),
+          // Ensure image URL is absolute
+          image: p.product_image
+            ? p.product_image.startsWith('http')
+              ? p.product_image
+              : `${SERVER_URL}${p.product_image.startsWith('/') ? '' : '/'}${
+                  p.product_image
+                }`
+            : p.image,
+          price: Number(p.price),
+        }));
 
-    // price
-    if (price === 'low') {
-      list = list.filter((p) => (p.price || 0) <= 200);
-    } else if (price === 'high') {
-      list = list.filter((p) => (p.price || 0) > 200);
-    }
+        // Client-side filtering (retained from original code)
+        // search query
+        const q = query.trim().toLowerCase();
+        if (q) {
+          list = list.filter(
+            (p) =>
+              p.name.toLowerCase().includes(q) ||
+              (p.category || '').toLowerCase().includes(q)
+          );
+        }
 
-    // distance (based on product.shopId)
-    if (distance !== 'all') {
-      list = list.filter((p) => {
-        const d = shopDistance.get(p.shopId) ?? Infinity;
-        return distance === 'near' ? d <= 1 : d > 1;
-      });
-    }
+        // price
+        if (price === 'low') {
+          list = list.filter((p) => (p.price || 0) <= 200);
+        } else if (price === 'high') {
+          list = list.filter((p) => (p.price || 0) > 200);
+        }
 
-    // availability
-    if (availability !== 'all') {
-      if (availability === 'in_stock') {
-        list = list.filter((p) => p.availability !== 'out_of_stock');
-      } else {
-        list = list.filter((p) => p.availability === 'out_of_stock');
+        // distance
+        if (distance !== 'all') {
+          list = list.filter((p) => {
+            const d = p.distance ?? Infinity;
+            return distance === 'near' ? d <= 1 : d > 1;
+          });
+        }
+
+        // availability
+        if (availability !== 'all') {
+          if (availability === 'in_stock') {
+            list = list.filter((p) => p.availability !== 'out_of_stock');
+          } else {
+            list = list.filter((p) => p.availability === 'out_of_stock');
+          }
+        }
+
+        setProducts(list);
+      } catch (error) {
+        console.error('Failed to fetch products:', error);
+        Toast.show({
+          type: 'error',
+          text1: 'Error',
+          text2: 'Failed to load products',
+        });
+      } finally {
+        setLoading(false);
       }
-    }
+    };
 
-    return list;
-  }, [query, price, distance, availability, shopDistance]);
+    const timeoutId = setTimeout(fetchProducts, 300); // Debounce
+    return () => clearTimeout(timeoutId);
+  }, [query, price, availability, distance]);
 
   const clearAllFilters = () => {
     setPrice('all');

@@ -19,7 +19,7 @@ import api, { SERVER_URL } from '@/services/api';
 import { SearchBar } from '@/components/common/SearchBar';
 import { ShopCard } from '@/components/cards/ShopCard';
 import { ProductCard } from '@/components/cards/ProductCard'; // keep if needed elsewhere
-import { mockShops } from '@/utils/mockData';
+import { Shop } from '@/types';
 import {
   Store,
   Tag,
@@ -97,9 +97,9 @@ export default function HomeScreen() {
             },
           ]);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Failed to fetch offers:', err);
-        // Fallback on error
+        // Fallback on error (including 401)
         setBanners([
           {
             id: 'b1',
@@ -218,10 +218,44 @@ export default function HomeScreen() {
     }, [])
   );
 
-  const favoriteShops: typeof mockShops = useMemo(() => {
-    if (!favoriteIds?.length) return [];
-    const setIds = new Set(favoriteIds);
-    return mockShops.filter((s) => s && s.id && setIds.has(s.id));
+  const [favoriteShops, setFavoriteShops] = useState<Shop[]>([]);
+
+  useEffect(() => {
+    const fetchFavoriteShops = async () => {
+      if (!favoriteIds?.length) {
+        setFavoriteShops([]);
+        return;
+      }
+
+      try {
+        // Fetch all shops and filter (temporary solution until bulk fetch endpoint exists)
+        const res = await api.get('/shops');
+        const allShops = Array.isArray(res.data) ? res.data : [];
+
+        const favs = allShops
+          .filter((s: any) => favoriteIds.includes(String(s.id)))
+          .map((s: any) => ({
+            ...s,
+            id: String(s.id),
+            name: s.shop_name || s.name,
+            address: s.shop_address || s.address,
+            category: s.shop_category || s.category,
+            image: s.image
+              ? s.image.startsWith('http')
+                ? s.image
+                : `${SERVER_URL}${s.image.startsWith('/') ? '' : '/'}${s.image}`
+              : null,
+            isOpen: s.is_open,
+            rating: s.rating,
+          }));
+
+        setFavoriteShops(favs);
+      } catch (error) {
+        console.error('Failed to fetch favorite shops:', error);
+      }
+    };
+
+    fetchFavoriteShops();
   }, [favoriteIds]);
 
   // UI helpers

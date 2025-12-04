@@ -1,9 +1,15 @@
 // app/prebill/index.tsx
-import React, { useMemo, useCallback, useRef, useState } from 'react';
+import React, {
+  useMemo,
+  useCallback,
+  useRef,
+  useState,
+  useEffect,
+} from 'react';
 import { View, Text, TouchableOpacity, Modal, Pressable } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useApp } from '@/contexts/AppContext';
-import { mockShops } from '@/utils/mockData';
+import api, { SERVER_URL } from '@/services/api';
 import { useRouter } from 'expo-router';
 import { PrebillShopCard } from '@/components/cards/PrebillShopCard';
 import { Shop } from '@/types';
@@ -21,6 +27,7 @@ export default function PrebillSummaryScreen() {
     removeFromShoppingList,
     getPackingStatus,
     cancelPackingRequest,
+    favoriteShops,
   } = useApp();
 
   const listRef = useRef<SwipeListView<GroupRow>>(null);
@@ -32,26 +39,111 @@ export default function PrebillSummaryScreen() {
   const [deleteSheetOpen, setDeleteSheetOpen] = useState(false);
   const [deleteShopRow, setDeleteShopRow] = useState<GroupRow | null>(null);
 
+  const [fetchedShops, setFetchedShops] = useState<Shop[]>([]);
+
+  // Fetch missing shop details
+  useEffect(() => {
+    const fetchMissingShops = async () => {
+      const shopIds = new Set(
+        shoppingList.map((i) =>
+          String(i.product.shopId || i.product.shop_id || 'unknown')
+        )
+      );
+
+      // Filter out IDs we already have in favoriteShops
+      const missingIds = Array.from(shopIds).filter(
+        (id) =>
+          !favoriteShops.find((s) => String(s.id) === id) && id !== 'unknown'
+      );
+
+      if (missingIds.length === 0) return;
+
+      try {
+        // Fetch all shops (since we don't have bulk fetch by ID yet)
+        const res = await api.get('/shops');
+        const allShops = Array.isArray(res.data) ? res.data : [];
+
+        const found = allShops
+          .filter((s: any) => missingIds.includes(String(s.id)))
+          .map((s: any) => ({
+            ...s,
+            id: String(s.id),
+            name: s.shop_name || s.name,
+            address: s.shop_address || s.address,
+            category: s.shop_category || s.category,
+            image: s.image
+              ? s.image.startsWith('http')
+                ? s.image
+                : `${SERVER_URL}${s.image.startsWith('/') ? '' : '/'}${s.image}`
+              : null,
+            isOpen: s.is_open,
+            rating: s.rating,
+          }));
+
+        setFetchedShops((prev) => {
+          // Merge new found shops with existing fetched shops, avoiding duplicates
+          const combined = [...prev];
+          for (const f of found) {
+            if (!combined.find((c) => c.id === f.id)) {
+              combined.push(f);
+            }
+          }
+          return combined;
+        });
+      } catch (error) {
+        console.error('Failed to fetch missing shops:', error);
+      }
+    };
+
+    fetchMissingShops();
+  }, [shoppingList, favoriteShops]);
+
   // Group items by shop
   const groups = useMemo<GroupRow[]>(() => {
-    const byShop: Record<string, { count: number; total: number }> = {};
+    const byShop: Record<
+      string,
+      { count: number; total: number; shopName?: string }
+    > = {};
     for (const item of shoppingList) {
-      const sid = item.product.shopId;
+      const sid = String(
+        item.product.shopId || item.product.shop_id || 'unknown'
+      );
       const price =
         typeof item.product.price === 'number' ? item.product.price : 0;
       if (!byShop[sid]) byShop[sid] = { count: 0, total: 0 };
       byShop[sid].count += 1;
       byShop[sid].total += item.quantity * price;
+
+      // Try to capture shop name from product if available
+      if (!byShop[sid].shopName && (item.product as any).shopName) {
+        byShop[sid].shopName = (item.product as any).shopName;
+      }
     }
     return Object.entries(byShop)
       .map(([shopId, info]) => {
-        const shop = mockShops.find((s) => s.id === shopId);
-        return shop
-          ? { shopId, shop, count: info.count, total: info.total }
-          : null;
+        let shop = favoriteShops.find((s) => String(s.id) === shopId);
+
+        if (!shop) {
+          shop = fetchedShops.find((s) => String(s.id) === shopId);
+        }
+
+        if (!shop) {
+          shop = {
+            id: shopId,
+            name: info.shopName || `Shop #${shopId}`,
+            address: 'Unknown Address',
+            isOpen: true,
+            rating: 0,
+            offers: [],
+            category: 'Unknown',
+            image: null,
+          };
+        }
+
+        return { shopId, shop, count: info.count, total: info.total };
       })
       .filter(Boolean) as GroupRow[];
-  }, [shoppingList]);
+  }, [shoppingList, favoriteShops, fetchedShops]);
 
   const navigateToShop = useCallback(
     (shopId: string, editing?: boolean) =>
@@ -64,8 +156,10 @@ export default function PrebillSummaryScreen() {
 
   const deleteShopGroup = useCallback(
     (shopId: string) => {
-      const toRemove = shoppingList.filter((i) => i.product.shopId === shopId);
-      toRemove.forEach((i) => removeFromShoppingList(i.product.id));
+      const toRemove = shoppingList.filter(
+        (i) => String(i.product.shopId || i.product.shop_id) === shopId
+      );
+      toRemove.forEach((i) => removeFromShoppingList(String(i.product.id)));
     },
     [shoppingList, removeFromShoppingList]
   );

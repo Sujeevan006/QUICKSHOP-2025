@@ -69,6 +69,7 @@ export interface Product {
 
   shop?: Shop; // ✅ ADDED → for modal & detailed views
   created_at?: string;
+  distance?: number;
 }
 
 // --------------------

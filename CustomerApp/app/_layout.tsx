@@ -31,7 +31,7 @@ function GlobalBottomNav() {
   const labelColor = iconColor;
 
   const go = (href: string) => {
-    if (pathname !== href) router.replace(href);
+    if (pathname !== href) router.replace(href as any);
   };
 
   const isHome = pathname === '/' || pathname === '/index';
@@ -133,10 +133,7 @@ function CustomerShell() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-      <StatusBar
-        style={mode === 'dark' ? 'light' : 'dark'}
-        backgroundColor={theme.primary}
-      />
+      <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
 
       {!isAuth && (
         <AppHeader
@@ -165,10 +162,7 @@ function ShopOwnerShell() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: theme.background }}>
-      <StatusBar
-        style={mode === 'dark' ? 'light' : 'dark'}
-        backgroundColor={theme.primary}
-      />
+      <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
 
       {/* For Shop Owners, you could make a different header/navigation */}
       {!isAuth && (

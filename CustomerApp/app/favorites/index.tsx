@@ -9,7 +9,7 @@ import { ProductCard } from '@/components/cards/ProductCard';
 import { SearchBar } from '@/components/common/SearchBar';
 import { ProductDetailModal } from '@/components/modals/ProductDetailModal';
 import type { Product, Shop } from '@/types';
-import { mockShops } from '@/utils/mockData';
+import api, { SERVER_URL } from '@/services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const FAVORITE_SHOPS_KEY = 'favoriteShopIds';
@@ -59,10 +59,43 @@ export default function FavoritesScreen() {
   );
 
   // Build favorite shops list from IDs and mock catalog; filter(Boolean) removes any unmatched
-  const favoriteShopsList: Shop[] = useMemo(() => {
-    if (!favoriteIds?.length) return [];
-    const setIds = new Set(favoriteIds);
-    return mockShops.filter((s) => s && s.id && setIds.has(s.id));
+  const [favoriteShopsList, setFavoriteShopsList] = useState<Shop[]>([]);
+
+  useEffect(() => {
+    const fetchFavoriteShops = async () => {
+      if (!favoriteIds?.length) {
+        setFavoriteShopsList([]);
+        return;
+      }
+
+      try {
+        const res = await api.get('/shops');
+        const allShops = Array.isArray(res.data) ? res.data : [];
+
+        const favs = allShops
+          .filter((s: any) => favoriteIds.includes(String(s.id)))
+          .map((s: any) => ({
+            ...s,
+            id: String(s.id),
+            name: s.shop_name || s.name,
+            address: s.shop_address || s.address,
+            category: s.shop_category || s.category,
+            image: s.image
+              ? s.image.startsWith('http')
+                ? s.image
+                : `${SERVER_URL}${s.image.startsWith('/') ? '' : '/'}${s.image}`
+              : null,
+            isOpen: s.is_open,
+            rating: s.rating,
+          }));
+
+        setFavoriteShopsList(favs);
+      } catch (error) {
+        console.error('Failed to fetch favorite shops:', error);
+      }
+    };
+
+    fetchFavoriteShops();
   }, [favoriteIds]);
 
   const filteredShops = useMemo(() => {
@@ -216,7 +249,7 @@ export default function FavoritesScreen() {
       {activeTab === 'shops' ? (
         <FlatList
           data={filteredShops}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => String(item.id)}
           renderItem={({ item }) => (
             <ShopCard
               shop={item}
@@ -227,8 +260,8 @@ export default function FavoritesScreen() {
                 })
               }
               showFavoriteIcon
-              isFavorite={favoriteIds.includes(item.id)}
-              onToggleFavorite={() => toggleFavoriteShop(item.id)}
+              isFavorite={favoriteIds.includes(String(item.id))}
+              onToggleFavorite={() => toggleFavoriteShop(String(item.id))}
             />
           )}
           ListEmptyComponent={
@@ -250,7 +283,7 @@ export default function FavoritesScreen() {
         <>
           <FlatList
             data={filteredProducts}
-            keyExtractor={(item) => item.id}
+            keyExtractor={(item) => String(item.id)}
             numColumns={2}
             columnWrapperStyle={{ justifyContent: 'space-between' }}
             contentContainerStyle={{ paddingHorizontal: 4, paddingBottom: 16 }}

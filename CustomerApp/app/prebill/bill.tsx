@@ -11,7 +11,9 @@ import {
 import { useTheme } from '@/contexts/ThemeContext';
 import { useApp } from '@/contexts/AppContext';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { mockShops } from '@/utils/mockData';
+import apiClient, { SERVER_URL } from '@/services/api';
+import { Shop } from '@/types';
+
 import Toast from 'react-native-toast-message';
 import { X, Package } from 'lucide-react-native';
 
@@ -19,21 +21,81 @@ export default function PrebillBillScreen() {
   const { theme } = useTheme();
   const router = useRouter();
   const { shopId } = useLocalSearchParams<{ shopId: string }>();
-  const { shoppingList, requestPacking } = useApp();
+  const { shoppingList, requestPacking, favoriteShops } = useApp();
 
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const shop = mockShops.find((s) => s.id === shopId);
+  const [fetchedShop, setFetchedShop] = useState<Shop | null>(null);
+
+  // Fetch shop details if not in favorites
+  React.useEffect(() => {
+    const fetchShop = async () => {
+      if (favoriteShops.find((s) => String(s.id) === shopId)) return;
+
+      try {
+        const res = await apiClient.get('/shops');
+        const allShops = Array.isArray(res.data) ? res.data : [];
+        const found = allShops.find((s: any) => String(s.id) === shopId);
+
+        if (found) {
+          setFetchedShop({
+            ...found,
+            id: String(found.id),
+            name: found.shop_name || found.name,
+            address: found.shop_address || found.address,
+            category: found.shop_category || found.category,
+            image: found.image
+              ? found.image.startsWith('http')
+                ? found.image
+                : `${SERVER_URL}${found.image.startsWith('/') ? '' : '/'}${
+                    found.image
+                  }`
+              : null,
+            isOpen: found.is_open,
+            rating: found.rating,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch shop details:', error);
+      }
+    };
+
+    fetchShop();
+  }, [shopId, favoriteShops]);
+
+  let shop = favoriteShops.find((s) => String(s.id) === shopId) || fetchedShop;
+
+  if (!shop) {
+    const item = shoppingList.find(
+      (i) => String(i.product.shopId || i.product.shop_id) === shopId
+    );
+    if (item) {
+      const p: any = item.product;
+      shop = {
+        id: shopId,
+        name: p.shopName || p.shop_name || `Shop #${shopId}`,
+        address: 'Unknown Address',
+        isOpen: true,
+        rating: 0,
+        offers: [],
+        category: 'Unknown',
+        image: null,
+      };
+    }
+  }
 
   const items = useMemo(
-    () => shoppingList.filter((i) => i.product.shopId === shopId),
+    () =>
+      shoppingList.filter(
+        (i) => String(i.product.shopId || i.product.shop_id) === shopId
+      ),
     [shoppingList, shopId]
   );
 
   const subtotal = useMemo(
     () =>
       items.reduce((sum, i) => {
-        const price = typeof i.product.price === 'number' ? i.product.price : 0;
+        const price = Number(i.product.price) || 0;
         return sum + i.quantity * price;
       }, 0),
     [items]
@@ -237,8 +299,7 @@ export default function PrebillBillScreen() {
           {items.map((i, idx) => {
             const name = i.product.name;
             const qty = i.quantity;
-            const price =
-              typeof i.product.price === 'number' ? i.product.price : 0;
+            const price = Number(i.product.price) || 0;
             const lineTotal = qty * price;
             const unit = i.product.unit ? ` / ${i.product.unit}` : '';
 
